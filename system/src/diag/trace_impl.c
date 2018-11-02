@@ -10,8 +10,9 @@ extern uint32_t SystemCoreClock;
  * Initialize UART2 with TX on PA2. Output is 8N1 115200.
  */
 void trace_initialize(void) {
-	// enable GPIO clock for port A
+	// enable GPIO clock for port A and SYSCFG clock
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
 
 	// configure PA2 as alternate function out, push/pull (default on reset)
 	GPIOA->MODER |= GPIO_MODER_MODER2_1;

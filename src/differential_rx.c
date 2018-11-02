@@ -40,7 +40,7 @@ void diffrx_set_state(diffrx_state_t state) {
 	// update GPIO: the signal is active high
 	switch(state) {
 	case kDiffRxDisabled:
-		GPIOA->ODR &= (uint16_t) ~GPIO_ODR_7;
+		GPIOA->ODR &= (uint32_t) ~GPIO_ODR_7;
 		break;
 
 	case kDiffRxEnabled:

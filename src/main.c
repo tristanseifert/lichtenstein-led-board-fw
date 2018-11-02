@@ -36,6 +36,7 @@
 #include "differential_rx.h"
 #include "ws2811_generator.h"
 #include "spi.h"
+#include "canbus.h"
 
 #include "gitcommit.h"
 
@@ -50,8 +51,12 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	diffrx_init();
 	ws2811_init();
 	spi_init();
+	canbus_init();
 
 	// read configuration from flash
+
+	// configure CAN and start it
+	canbus_start();
 
 	// reset the outputs, then enable differential driver
 	ws2811_send_pixel(300, kWS2811PixelTypeRGBW, 0x00000000);

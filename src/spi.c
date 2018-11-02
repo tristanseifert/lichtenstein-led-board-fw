@@ -54,7 +54,7 @@ void spi_begin(void) {
 	GPIOA->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR7;
 
 	// assert /CS and enable SPI
-	SPI1->CR1 &= (uint16_t) ~SPI_CR1_SSI;
+	SPI1->CR1 &= (uint32_t) ~SPI_CR1_SSI;
 	SPI1->CR1 |= SPI_CR1_SPE;
 }
 
@@ -67,7 +67,7 @@ void spi_begin(void) {
 void spi_end(void) {
 	// de-assert CS and disable SPI
 	SPI1->CR1 |= SPI_CR1_SSI;
-	SPI1->CR1 &= (uint16_t) ~SPI_CR1_SPE;
+	SPI1->CR1 &= (uint32_t) ~SPI_CR1_SPE;
 
 	// re-initialize differential rx
 	diffrx_init();
