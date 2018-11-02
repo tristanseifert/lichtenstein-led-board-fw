@@ -66,13 +66,14 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
 	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 
-  // Infinite loop
-  while (1)
-    {
-       // Add your code here.
-    }
+	// enter main loop
+	while(1) {
+		// wait for an interrupt
+		__WFI();
+	}
 
-  return 0;
+	// never should get here
+	return 0;
 }
 
 

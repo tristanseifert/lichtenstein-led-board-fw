@@ -73,6 +73,21 @@ void canbus_init(void) {
 	 */
 	CAN->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_RFLM;
 
+	/**
+	 * Enable CAN interrupts:
+	 *
+	 * - Error interrupt
+	 * - Bus off interrupt
+	 * - Error passive interrupt
+	 * - FIFO full
+	 * - FIFO message pending
+	 */
+	CAN->IER |= CAN_IER_ERRIE | CAN_IER_BOFIE | CAN_IER_EPVIE | CAN_IER_FFIE0 | CAN_IER_FMPIE0;
+
+	// unmask interrupts
+	NVIC_EnableIRQ(CEC_CAN_IRQn);
+	NVIC_SetPriority(CEC_CAN_IRQn, 2);
+
 	// configure CAN bit timing for 125kbps nominal
 	CAN->BTR = 0x001c0017;
 }
@@ -304,4 +319,113 @@ int canbus_tx_with_mailbox(int mailbox, canbus_message_t *msg) {
 	// TODO: timeout if CAN physical layer got fucked
 	while(!(CAN->TSR & txOkFlag)) {}
 	return 0;
+}
+
+
+
+/**
+ * CAN IRQ handler
+ */
+void CEC_CAN_IRQHandler(void) {
+	// was this a CAN IRQ?
+	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
+		uint32_t masterIrq = CAN->MSR;
+
+		// is this an error interrupt?
+		if(masterIrq & CAN_MSR_ERRI) {
+			// TODO: handle error interrupts
+			LOG_PUTS("CAN error");
+
+			// acknowledge error interrupt
+			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
+		}
+
+		// do we have any pending messages in the FIFOs? repeat while we do
+		uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
+		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
+
+		while(fifo0_pending || fifo1_pending) {
+			// is there any pending messages in FIFO 0?
+			if(fifo0_pending) {
+				canbus_read_fifo(0);
+			}
+			// are there any pending messages in FIFO 1?
+			if(fifo1_pending) {
+				canbus_read_fifo(1);
+			}
+
+			// check for overruns
+			canbus_check_fifo_overrun();
+
+			// re-check fifo status
+			fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
+			fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
+		}
+	}
+}
+
+/**
+ * Reads a message from the specified FIFO.
+ */
+void canbus_read_fifo(int fifo) {
+	// find a free slot in the receive buffer
+	int freeRxSlot = -1;
+
+	for(int i = 0; i < kRxBufferSize; i++) {
+		// is this slot free?
+		if(!rxBuffer[i].valid) {
+			// yup, copy index and leave
+			freeRxSlot = i;
+			break;
+		}
+	}
+
+	// if no free slot was found, return. we will probably loose this message
+	if(freeRxSlot == -1) {
+		return;
+	}
+
+	// release message from the FIFO
+	if(fifo == 0) {
+		CAN->RF0R |= CAN_RF0R_RFOM0;
+
+		// wait for the mailbox to be released
+		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
+	} else if(fifo == 1) {
+		CAN->RF1R |= CAN_RF1R_RFOM1;
+
+		// wait for the mailbox to be released
+		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+	}
+
+	// get the identifier of the message
+	canbus_message_t *msg = &rxBuffer[freeRxSlot];
+
+	msg->valid = 1;
+	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
+	msg->identifier = (CAN->sFIFOMailBox[fifo].RIR & 0xFFFFFFF8) >> 3;
+
+	// copy the data out of the register
+	msg->length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
+
+	memcpy(&msg->data[0], (uint32_t *) &CAN->sFIFOMailBox[fifo].RDLR, 4);
+	memcpy(&msg->data[4], (uint32_t *) &CAN->sFIFOMailBox[fifo].RDHR, 4);
+}
+
+/**
+ * Checks whether the receive FIFOs were overrun.
+ */
+void canbus_check_fifo_overrun(void) {
+	// was FIFO0 overrun?
+	if(CAN->RF0R & CAN_RF0R_FOVR0) {
+		droppedMessages = true;
+
+		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
+	}
+	// Was FIFO1 overrun?
+	if(CAN->RF1R & CAN_RF1R_FOVR1) {
+		droppedMessages = true;
+
+		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
+	}
 }

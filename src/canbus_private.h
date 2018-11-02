@@ -13,6 +13,25 @@
 #include "canbus.h"
 
 /**
+ * Declare prototype for the IRQ
+ */
+void CEC_CAN_IRQHandler(void);
+
+
+
+/**
+ * Reads a message from the specified FIFO.
+ */
+void canbus_read_fifo(int fifo);
+
+/**
+ * Checks whether the receive FIFOs were overrun.
+ */
+void canbus_check_fifo_overrun(void);
+
+
+
+/**
  * Finds the next available transmit mailbox.
  */
 int canbus_find_free_tx_mailbox(void);
