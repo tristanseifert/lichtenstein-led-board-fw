@@ -44,6 +44,13 @@ void spiflash_init(void) {
 int spiflash_read(size_t nBytes, void *buf, uint32_t address) {
 	return spiflash_read_internal(0x0B, nBytes, buf, address);
 }
+/**
+ * Reads n bytes from the flash's security register. The register is specified
+ * by bits 9-8 of the address.
+ */
+int spiflash_read_security(size_t nBytes, void *buf, uint32_t address) {
+	return spiflash_read_internal(0x48, nBytes, buf, address);
+}
 
 /**
  * Reads n bytes from the flash, starting at the specified address. The specific
@@ -89,6 +96,13 @@ int spiflash_read_internal(uint8_t command, size_t nBytes, void *buf, uint32_t a
  */
 int spiflash_write(size_t nBytes, void *buf, uint32_t address) {
 	return spiflash_write_page_internal(0x02, nBytes, buf, address);
+}
+/**
+ * Writes n (at most 256) bytes to the address in the security register space of
+ * the flash.
+ */
+int spiflash_write_security(size_t nBytes, void *buf, uint32_t address) {
+	return spiflash_write_page_internal(0x42, nBytes, buf, address);
 }
 
 /**
@@ -183,6 +197,13 @@ int spiflash_erase(size_t nBytes, uint32_t address) {
 
 	// return error code
 	return err;
+}
+/**
+ * Erases an entire security register.
+ */
+int spiflash_erase_security(uint32_t address) {
+	address &= 0x3FFF;
+	return spiflash_erase_block_internal(0x44, address);
 }
 
 /**

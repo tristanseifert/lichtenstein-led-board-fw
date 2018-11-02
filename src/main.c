@@ -40,6 +40,8 @@
 
 #include "spi_flash.h"
 
+#include "nvram.h"
+
 #include "gitcommit.h"
 
 int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
@@ -57,6 +59,7 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// initialize flash and read config
 	spiflash_init();
+	nvram_init();
 
 	// configure CANnabus and start it
 	canbus_start();

@@ -23,6 +23,11 @@ void spiflash_init(void);
  * Reads n bytes from the flash, starting at the specified address.
  */
 int spiflash_read(size_t nBytes, void *buf, uint32_t address);
+/**
+ * Reads n bytes from the flash's security register. The register is specified
+ * by bits 9-8 of the address.
+ */
+int spiflash_read_security(size_t nBytes, void *buf, uint32_t address);
 
 /**
  * Writes n bytes to the flash, starting at the specified address. The pages
@@ -35,11 +40,20 @@ int spiflash_read(size_t nBytes, void *buf, uint32_t address);
  * page are written, writing wraps to the start of the page.
  */
 int spiflash_write(size_t nBytes, void *buf, uint32_t address);
+/**
+ * Writes n (at most 256) bytes to the address in the security register space of
+ * the flash.
+ */
+int spiflash_write_security(size_t nBytes, void *buf, uint32_t address);
 
 /**
  * Erases n bytes starting at the specified address, in the most efficient way
  * possible.
  */
 int spiflash_erase(size_t nBytes, uint32_t address);
+/**
+ * Erases an entire security register.
+ */
+int spiflash_erase_security(uint32_t address);
 
 #endif /* SPI_FLASH_H_ */
