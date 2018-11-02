@@ -40,11 +40,18 @@ void diffrx_set_state(diffrx_state_t state) {
 	// update GPIO: the signal is active high
 	switch(state) {
 	case kDiffRxDisabled:
-		GPIOA->ODR &= (uint32_t) ~GPIO_ODR_7;
+		GPIOA->ODR &= (uint16_t) ~GPIO_ODR_7;
 		break;
 
 	case kDiffRxEnabled:
 		GPIOA->ODR |= GPIO_ODR_7;
 		break;
 	}
+}
+
+/**
+ * Returns the state of the differential receiver.
+ */
+diffrx_state_t diffrx_get_state(void) {
+	return gLastState;
 }

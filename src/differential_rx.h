@@ -31,4 +31,9 @@ void diffrx_init(void);
  */
 void diffrx_set_state(diffrx_state_t state);
 
+/**
+ * Returns the state of the differential receiver.
+ */
+diffrx_state_t diffrx_get_state(void);
+
 #endif /* DIFFERENTIAL_RX_H_ */
