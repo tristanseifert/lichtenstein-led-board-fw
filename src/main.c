@@ -29,41 +29,45 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "diag/Trace.h"
 
-// ----------------------------------------------------------------------------
-//
-// Standalone STM32F0 empty sample (trace via ITM).
-//
-// Trace support is enabled by adding the TRACE macro definition.
-// By default the trace messages are forwarded to the ITM output,
-// but can be rerouted to any device or completely suppressed, by
-// changing the definitions required in system/src/diag/trace_impl.c
-// (currently OS_USE_TRACE_ITM, OS_USE_TRACE_SEMIHOSTING_DEBUG/_STDOUT).
-//
+#include "lichtenstein.h"
 
-// ----- main() ---------------------------------------------------------------
+#include "output_mux.h"
+#include "differential_rx.h"
+#include "ws2811_generator.h"
+#include "spi.h"
 
-// Sample pragmas to cope with warnings. Please note the related line at
-// the end of this function, used to pop the compiler diagnostics status.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wmissing-declarations"
-#pragma GCC diagnostic ignored "-Wreturn-type"
+#include "gitcommit.h"
 
-int
-main(int argc, char* argv[])
-{
-  // At this stage the system clock should have already been configured
-  // at high speed.
+int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
+	// initialize trace
+	trace_initialize();
+
+	trace_printf("lichtenstein-led-fw %s", GIT_INFO);
+
+	// initialize hardware
+	mux_init();
+	diffrx_init();
+	ws2811_init();
+	spi_init();
+
+	// read configuration from flash
+
+	// reset the outputs, then enable differential driver
+	ws2811_send_pixel(300, kWS2811PixelTypeRGBW, 0x00000000);
+
+	diffrx_set_state(kDiffRxEnabled);
+
+	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
+	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 
   // Infinite loop
   while (1)
     {
        // Add your code here.
     }
+
+  return 0;
 }
 
-#pragma GCC diagnostic pop
 
-// ----------------------------------------------------------------------------

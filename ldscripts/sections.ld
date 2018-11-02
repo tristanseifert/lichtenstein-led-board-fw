@@ -62,14 +62,6 @@ PROVIDE ( _Main_Stack_Limit = __Main_Stack_Limit ) ;
  */
 _Minimum_Stack_Size = 256 ;
 
-/*
- * Default heap definitions.
- * The heap start immediately after the last statically allocated 
- * .sbss/.noinit section, and extends up to the main stack limit.
- */
-PROVIDE ( _Heap_Begin = _end_noinit ) ;
-PROVIDE ( _Heap_Limit = __stack - __Main_Stack_Size ) ;
-
 /* 
  * The entry point is informative, for debuggers and simulators,
  * since the Cortex-M vector points to it anyway.
