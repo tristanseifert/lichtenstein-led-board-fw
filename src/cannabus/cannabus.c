@@ -29,7 +29,7 @@ void cannabus_init(cannabus_addr_t addr, cannabus_callbacks_t *callbacks) {
 	// set filter for the broadcast address
 	err = gState.callbacks.can_config_filter(0, 0x07FFF800, (0xFFFF << 11));
 
-	if(err != 0) {
+	if(err < kErrSuccess) {
 		LOG("couldn't set broadcast filter: %d", err);
 	}
 
@@ -39,7 +39,7 @@ void cannabus_init(cannabus_addr_t addr, cannabus_callbacks_t *callbacks) {
 	// start the CAN bus
 	err = gState.callbacks.can_init();
 
-	if(err != 0) {
+	if(err < kErrSuccess) {
 		LOG("can_init failed: %d", err);
 	}
 }
@@ -57,7 +57,7 @@ void cannabus_set_address(cannabus_addr_t addr) {
 	// update the filters on the CAN peripheral
 	err = gState.callbacks.can_config_filter(1, 0x07FFF800, (uint32_t) (addr << 11));
 
-	if(err != 0) {
+	if(err < kErrSuccess) {
 		LOG("can_config_filter failed: %d", err);
 	}
 }
@@ -66,6 +66,8 @@ void cannabus_set_address(cannabus_addr_t addr) {
 
 /**
  * Gets any waiting messages from the CAN bus driver and processes them.
+ *
+ * @returns A negative error code, or the number of messages processed.
  */
 int cannabus_process(void) {
 	int err, messages = 0;
@@ -78,14 +80,14 @@ int cannabus_process(void) {
 		// dequeue a message
 		err = gState.callbacks.can_rx_message(&frame);
 
-		if(err < 0) {
+		if(err < kErrSuccess) {
 			return err;
 		}
 
 		// convert this message into a CANnabus operation
 		err = cannabus_conv_frame_to_op(&frame, &op);
 
-		if(err < 0) {
+		if(err < kErrSuccess) {
 			return err;
 		}
 
@@ -98,7 +100,7 @@ int cannabus_process(void) {
 			err = gState.callbacks.handle_operation(&op);
 		}
 
-		if(err < 0) {
+		if(err < kErrSuccess) {
 			return err;
 		}
 
@@ -109,6 +111,28 @@ int cannabus_process(void) {
 	// return number of processed messages
 	return messages;
 }
+
+
+
+/**
+ * Sends the given operation on the bus.
+ */
+int cannabus_send_op(cannabus_operation_t *op) {
+	int err;
+	cannabus_can_frame_t frame;
+
+	// convert the operation to a CAN frame
+	err = cannabus_conv_op_to_frame(op, &frame);
+
+	if(err < kErrSuccess) {
+		return err;
+	}
+
+	// now, transmit the frame
+	return gState.callbacks.can_tx_message(&frame);
+}
+
+
 
 /**
  * Converts a received CAN frame into a CANnabus operation.
@@ -133,7 +157,26 @@ int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t 
 	memcpy(&op->data, &frame->data, 8);
 
 	// message was ok
-	return kCannabusSuccess;
+	return kErrSuccess;
+}
+
+/**
+ * Converts a CANnabus operation into a CAN frame to be transmitted.
+ *
+ * TODO: handle priority here lmfao
+ */
+int cannabus_conv_op_to_frame(cannabus_operation_t *op, cannabus_can_frame_t *frame) {
+	// build the identifier
+	uint32_t identifier = (op->reg & 0x1FFF) | (gState.address << 11);
+
+	// copy parameters to frame
+	frame->identifier = identifier;
+	frame->rtr = op->rtr;
+	frame->data_len = op->data_len;
+
+	memcpy(&frame->data, &op->data, 8);
+
+	return kErrSuccess;
 }
 
 

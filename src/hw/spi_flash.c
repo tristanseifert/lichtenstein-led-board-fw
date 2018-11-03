@@ -30,7 +30,7 @@ void spiflash_init(void) {
 	spi_end();
 
 	// handle errors, then log id info
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		LOG("error reading flash id: %d", err);
 		return;
 	}
@@ -61,7 +61,7 @@ int spiflash_read_internal(uint8_t command, size_t nBytes, void *buf, uint32_t a
 
 	// validate parameters
 	if(buf == NULL) {
-		return -1;
+		return kErrInvalidArgs;
 	}
 
 	// wait for the flash to be idle
@@ -117,9 +117,9 @@ int spiflash_write_page_internal(uint8_t command, size_t nBytes, void *buf, uint
 
 	// validate inputs
 	if(nBytes > 256) {
-		return -1;
+		return kErrInvalidArgs;
 	} else if(buf == NULL) {
-		return -1;
+		return kErrInvalidArgs;
 	}
 
 	// wait for the flash to be idle
@@ -128,7 +128,7 @@ int spiflash_write_page_internal(uint8_t command, size_t nBytes, void *buf, uint
 	// enable writing
 	err = spiflash_write_enable();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -141,7 +141,7 @@ int spiflash_write_page_internal(uint8_t command, size_t nBytes, void *buf, uint
 	spi_begin();
 	err = spiflash_command(&writeCmd, sizeof(writeCmd), NULL, 0);
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		spi_end();
 		return err;
 	}
@@ -150,7 +150,7 @@ int spiflash_write_page_internal(uint8_t command, size_t nBytes, void *buf, uint
 	err = spiflash_command(buf, nBytes, NULL, 0);
 	spi_end();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -169,7 +169,7 @@ int spiflash_write_page_internal(uint8_t command, size_t nBytes, void *buf, uint
  * TODO: make this smart lol
  */
 int spiflash_erase(size_t nBytes, uint32_t address) {
-	int err = 0;
+	int err = kErrSuccess;
 
 	// align address to a 4K block
 	address &= 0x00FFF000;
@@ -178,7 +178,7 @@ int spiflash_erase(size_t nBytes, uint32_t address) {
 	int numBlocks = ((int) nBytes) / 0x1000;
 
 	if(numBlocks == 0) {
-		return 0;
+		return kErrSuccess;
 	}
 
 	// begin erasing
@@ -187,7 +187,7 @@ int spiflash_erase(size_t nBytes, uint32_t address) {
 		err = spiflash_erase_block_internal(0x20, address);
 
 		// handle errors by leaving the loop
-		if(err < 0) {
+		if(err < kErrSuccess) {
 			break;
 		}
 
@@ -221,7 +221,7 @@ int spiflash_erase_block_internal(uint8_t command, uint32_t address) {
 	// enable writing
 	err = spiflash_write_enable();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -236,7 +236,7 @@ int spiflash_erase_block_internal(uint8_t command, uint32_t address) {
 	err = spiflash_command(&eraseCmd, sizeof(eraseCmd), NULL, 0);
 	spi_end();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -294,7 +294,7 @@ int spiflash_get_status(uint16_t *status) {
 
 	// clear the status register
 	if(status == NULL) {
-		return -1;
+		return kErrInvalidArgs;
 	}
 
 	*status = 0;
@@ -306,7 +306,7 @@ int spiflash_get_status(uint16_t *status) {
 	err = spiflash_command(&command, sizeof(command), &temp, sizeof(temp));
 	spi_end();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -319,14 +319,14 @@ int spiflash_get_status(uint16_t *status) {
 	err = spiflash_command(&command, sizeof(command), &temp, sizeof(temp));
 	spi_end();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
 	*status |= (uint16_t) temp;
 
 	// if we get here, it was successful
-	return 0;
+	return kErrSuccess;
 }
 
 /**
@@ -346,7 +346,7 @@ bool spiflash_is_busy(void) {
 	err = spiflash_command(&command, sizeof(command), &temp, sizeof(temp));
 	spi_end();
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 #ifdef DEBUG
 		asm volatile ("bkpt 0");
 #endif

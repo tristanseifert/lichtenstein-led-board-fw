@@ -17,7 +17,6 @@
  * CANnabus error codes
  */
 enum {
-	kCannabusSuccess			= 0,
 	kCannabusErrUnimplemented	= -42000,
 	kCannabusErrNodeIdMismatch	= -42001,
 };
@@ -105,8 +104,17 @@ void cannabus_set_address(cannabus_addr_t addr);
 
 /**
  * Gets any waiting messages from the CAN bus driver and processes them.
+ *
+ * @returns A negative error code, or the number of messages processed.
  */
 int cannabus_process(void);
+
+
+
+/**
+ * Sends the given operation on the bus.
+ */
+int cannabus_send_op(cannabus_operation_t *op);
 
 
 #endif /* CANNABUS_CANNABUS_H_ */

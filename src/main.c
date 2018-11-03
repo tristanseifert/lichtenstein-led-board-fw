@@ -94,7 +94,7 @@ static int cannabus_cb_can_rx_message(cannabus_can_frame_t *frame) {
 
 	err = can_get_last_message(&rawFrame);
 
-	if(err < 0) {
+	if(err < kErrSuccess) {
 		return err;
 	}
 
@@ -108,7 +108,7 @@ static int cannabus_cb_can_rx_message(cannabus_can_frame_t *frame) {
 	LOG("CANnabus rx from %x, %u bytes", rawFrame.identifier, rawFrame.length);
 
 	// success!
-	return 0;
+	return kErrSuccess;
 }
 /**
  * CANnabus callback: transmits a message.
@@ -175,7 +175,8 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// initialize trace
 	trace_initialize();
-	trace_printf("lichtenstein-led-fw %s", GIT_INFO);
+	LOG("lichtenstein-led-fw %s", GIT_INFO);
+
 
 	// initialize hardware/peripherals
 	init_hardware();

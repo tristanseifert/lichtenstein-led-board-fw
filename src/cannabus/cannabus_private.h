@@ -37,6 +37,11 @@ typedef struct {
  */
 int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t *op);
 
+/**
+ * Converts a CANnabus operation into a CAN frame to be transmitted.
+ */
+int cannabus_conv_op_to_frame(cannabus_operation_t *op, cannabus_can_frame_t *frame);
+
 
 
 /**
