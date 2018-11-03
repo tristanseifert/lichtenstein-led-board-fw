@@ -22,24 +22,24 @@ void CEC_CAN_IRQHandler(void);
 /**
  * Reads a message from the specified FIFO.
  */
-void canbus_read_fifo(int fifo);
+void can_read_fifo(int fifo);
 
 /**
  * Checks whether the receive FIFOs were overrun.
  */
-void canbus_check_fifo_overrun(void);
+void can_check_fifo_overrun(void);
 
 
 
 /**
  * Finds the next available transmit mailbox.
  */
-int canbus_find_free_tx_mailbox(void);
+int can_find_free_tx_mailbox(void);
 
 /**
  * Transmits the given message on the given mailbox.
  */
-int canbus_tx_with_mailbox(int mailbox, canbus_message_t *msg);
+int can_tx_with_mailbox(int mailbox, can_message_t *msg);
 
 
 

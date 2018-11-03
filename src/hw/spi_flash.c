@@ -7,7 +7,7 @@
 #include "spi_flash.h"
 #include "spi_flash_private.h"
 
-#include "spi.h"
+#include "../periph/spi.h"
 #include "differential_rx.h"
 
 #include "lichtenstein.h"

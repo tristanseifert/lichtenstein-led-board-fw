@@ -27,42 +27,161 @@
 
 // ----------------------------------------------------------------------------
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 
 #include "lichtenstein.h"
 
-#include "output_mux.h"
-#include "differential_rx.h"
-#include "ws2811_generator.h"
-#include "spi.h"
-#include "canbus.h"
+#include "hw/output_mux.h"
+#include "hw/differential_rx.h"
+#include "hw/ws2811_generator.h"
+#include "periph/spi.h"
+#include "periph/canbus.h"
 
-#include "spi_flash.h"
+#include "hw/spi_flash.h"
+#include "hw/nvram.h"
 
-#include "nvram.h"
+#include "cannabus/cannabus.h"
 
 #include "gitcommit.h"
 
-int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
-	// initialize trace
-	trace_initialize();
-
-	trace_printf("lichtenstein-led-fw %s", GIT_INFO);
-
-	// initialize hardware/peripherals
+/**
+ * Performs initialization of all hardware.
+ */
+static void init_hardware(void) {
+	// first, initialize the hardware
 	mux_init();
 	diffrx_init();
 	ws2811_init();
 	spi_init();
-	canbus_init();
+	can_init();
 
-	// initialize flash and read config
+	// then, init flash and read the config
 	spiflash_init();
 	nvram_init();
+}
 
-	// configure CANnabus and start it
-	canbus_start();
+
+
+/**
+ * CANnabus callback: initializes CAN bus.
+ */
+static int cannabus_cb_can_init(void) {
+	can_start();
+	return 0;
+}
+/**
+ * CANnabus callback: configures a mask-based filter.
+ */
+static int cannabus_cb_can_config_filter(unsigned int filter, uint32_t mask, uint32_t identifier) {
+	return can_filter_mask(filter, mask, identifier);
+}
+/**
+ * CANnabus callback: are there any messages waiting?
+ */
+static bool cannabus_cb_can_rx_waiting(void) {
+	return can_messages_available();
+}
+/**
+ * CANnabus callback: receives a message from CAN peripheral.
+ */
+static int cannabus_cb_can_rx_message(cannabus_can_frame_t *frame) {
+	int err;
+
+	// receive message from CAN peripheral
+	can_message_t rawFrame;
+
+	err = can_get_last_message(&rawFrame);
+
+	if(err < 0) {
+		return err;
+	}
+
+	// copy fields from the message
+	frame->identifier = rawFrame.identifier;
+	frame->rtr = rawFrame.rtr;
+	frame->data_len = rawFrame.length;
+
+	memcpy(&frame->data, &rawFrame.data, 8);
+
+	LOG("CANnabus rx from %x, %u bytes", rawFrame.identifier, rawFrame.length);
+
+	// success!
+	return 0;
+}
+/**
+ * CANnabus callback: transmits a message.
+ */
+static int cannabus_cb_can_tx_message(cannabus_can_frame_t *frame) {
+	int err;
+
+	LOG("CANnabus tx to %x, %u bytes", frame->identifier, frame->data_len);
+
+	// create a CAN driver frame structure
+	can_message_t rawFrame;
+	memset(&rawFrame, 0, sizeof(rawFrame));
+
+	rawFrame.valid = 1;
+	rawFrame.identifier = frame->identifier;
+	rawFrame.rtr = frame->rtr;
+	rawFrame.length = frame->data_len;
+
+	memcpy(&rawFrame.data, &frame->data, 8);
+
+	// transmit the frame
+	err = can_transmit_message(&rawFrame);
+	return err;
+}
+/**
+ * Handles a CANnabus operation that isn't handled internally by the CANnabus
+ * stack.
+ */
+static int cannabus_cb_handle_operation(cannabus_operation_t *op) {
+	// TODO: implement, lol
+	return kCannabusErrUnimplemented;
+}
+
+/**
+ * Initializes CANnabus communication.
+ */
+static void init_cannabus(void) {
+	// get the node id from nvram
+	nvram_t *nvram = nvram_get();
+	uint16_t busId = nvram->cannabusId;
+
+	// build the list of functions
+	cannabus_callbacks_t cb = {
+		.can_init = cannabus_cb_can_init,
+		.can_config_filter = cannabus_cb_can_config_filter,
+		.can_rx_waiting = cannabus_cb_can_rx_waiting,
+		.can_rx_message = cannabus_cb_can_rx_message,
+		.can_tx_message = cannabus_cb_can_tx_message,
+
+		.handle_operation = cannabus_cb_handle_operation,
+	};
+
+	// initialize bus
+	cannabus_init(busId, &cb);
+}
+
+
+
+/**
+ * Application entry point
+ */
+int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
+	int err;
+
+	// initialize trace
+	trace_initialize();
+	trace_printf("lichtenstein-led-fw %s", GIT_INFO);
+
+	// initialize hardware/peripherals
+	init_hardware();
+
+	// initialize CANnabus
+	init_cannabus();
 
 	// reset the outputs, then enable differential driver
 	ws2811_send_pixel(300, kWS2811PixelTypeRGBW, 0x00000000);
@@ -74,6 +193,13 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// enter main loop
 	while(1) {
+		// process waiting CANnabus messages
+		err = cannabus_process();
+
+		if(err < 0) {
+			LOG("cannabus_process failed: %d", err);
+		}
+
 		// wait for an interrupt
 		__WFI();
 	}

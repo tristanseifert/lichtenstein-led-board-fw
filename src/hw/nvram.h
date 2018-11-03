@@ -16,7 +16,7 @@
 /**
  * NVRAM structure
  */
-typedef struct {
+typedef struct __attribute__((packed)) {
 	// hardware revision
 	uint16_t hwVersion;
 	// software version
@@ -27,7 +27,7 @@ typedef struct {
 
 	// CRC-16 checksum. this must be the last value
 	uint16_t checksum;
-} nvram_t __attribute__((__packed__));
+} nvram_t;
 
 
 

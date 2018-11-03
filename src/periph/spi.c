@@ -10,7 +10,7 @@
  *      Author: tristan
  */
 #include "spi.h"
-#include "differential_rx.h"
+#include "../hw/differential_rx.h"
 
 #include "lichtenstein.h"
 

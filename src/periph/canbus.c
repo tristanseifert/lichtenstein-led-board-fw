@@ -6,8 +6,6 @@
  *
  * BTR register value calculated with http://www.bittiming.can-wiki.info/
  *
- * TODO: implement reception (lol)
- *
  *  Created on: Nov 1, 2018
  *      Author: tristan
  */
@@ -26,7 +24,7 @@
  */
 #define kRxBufferSize	8
 
-static canbus_message_t rxBuffer[kRxBufferSize];
+static can_message_t rxBuffer[kRxBufferSize];
 
 /// set when a message is received yet the queue is full
 bool droppedMessages = false;
@@ -35,7 +33,7 @@ bool droppedMessages = false;
 /**
  * Initializes the CAN peripheral.
  */
-void canbus_init(void) {
+void can_init(void) {
 	// clear the receive buffer
 	memset(&rxBuffer, 0, sizeof(rxBuffer));
 
@@ -95,7 +93,7 @@ void canbus_init(void) {
 /**
  * Starts the CAN driver.
  */
-void canbus_start(void) {
+void can_start(void) {
 	// exit initialization mode; wait for INAK clear
 	CAN->MCR &= (uint32_t) ~CAN_MCR_INRQ;
 	while((CAN->MSR & CAN_MSR_INAK)) {}
@@ -107,7 +105,7 @@ void canbus_start(void) {
 /**
  * Stops the CAN driver.
  */
-void canbus_stop(void) {
+void can_stop(void) {
 	// re-enter initialization mode
 	CAN->MCR |= CAN_MCR_INRQ;
 	while(!(CAN->MSR & CAN_MSR_INAK)) {}
@@ -125,62 +123,57 @@ void canbus_stop(void) {
  *
  * @note Only the low 29 bits are considered.
  */
-void canbus_filter_exact(uint32_t identifier) {
-	// enable filter initialization mode, deactivate filter 0
-	CAN->FMR |= CAN_FMR_FINIT;
-	CAN->FA1R &= (uint32_t) ~CAN_FA1R_FACT0;
-
-
-	// filter is configured as a single 32-bit filter in mask mode
-	CAN->FS1R |= CAN_FS1R_FSC0;
-	CAN->FM1R &= (uint32_t) ~CAN_FM1R_FBM0;
-
-	// set the mask (high 29 bits, then IDE is 1)
-	CAN->sFilterRegister[0].FR2 = 0xFFFFFFFC;
-	// copy low 29 bits of address, shift left 3, then add IDE bit (0x04)
-	CAN->sFilterRegister[0].FR1 = ((identifier & 0x1FFFFFFF) << 3) | 0x04;
-
-	// Use FIFO 0
-	CAN->FFA1R &= (uint32_t) ~CAN_FFA1R_FFA0;
-
-	// activate filter, then disable filter init mode
-	CAN->FA1R |= CAN_FA1R_FACT0;
-	CAN->FMR &= (uint32_t) ~CAN_FMR_FINIT;
+int can_filter_exact(unsigned int bank, uint32_t identifier) {
+	return can_filter_mask(bank, 0x1FFFFFFF, identifier);
 }
 
 /**
  * Configures the mask identifier filter.
  *
+ * @param bank The bank to configure: this should be [1, 14].
+ *
  * @note Only the low 29 bits of the identifier and mask are considered.
  */
-void canbus_filter_mask(uint32_t mask, uint32_t identifier) {
-	// enable filter initialization mode, deactivate filter 1
+int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
+	// make bank zero based, validate it, then get the bit flag for config regs
+	unsigned int bank = _bank - 1;
+
+	if(bank > 13) {
+		return -1;
+	}
+
+	uint32_t bankFlag = 1UL << (bank);
+
+	// enable filter initialization mode, deactivate filter
 	CAN->FMR |= CAN_FMR_FINIT;
-	CAN->FA1R &= (uint32_t) ~CAN_FA1R_FACT1;
+	CAN->FA1R &= (uint32_t) ~bankFlag;
 
 
 	// filter is configured as a single 32-bit filter in mask mode
-	CAN->FS1R |= CAN_FS1R_FSC0;
-	CAN->FM1R &= (uint32_t) ~CAN_FM1R_FBM0;
+	CAN->FS1R |= bankFlag;
+	CAN->FM1R &= (uint32_t) ~bankFlag;
 
 	// set the mask (high 29 bits, then IDE is 1)
-	CAN->sFilterRegister[0].FR2 = ((mask & 0x1FFFFFFF) << 3) | 0x04;
+	CAN->sFilterRegister[bank].FR2 = ((mask & 0x1FFFFFFF) << 3) | 0x04;
 	// copy low 29 bits of address, shift left 3, then add IDE bit (0x04)
-	CAN->sFilterRegister[0].FR1 = ((identifier & 0x1FFFFFFF) << 3) | 0x04;
+	CAN->sFilterRegister[bank].FR1 = ((identifier & 0x1FFFFFFF) << 3) | 0x04;
 
 	// Use FIFO 0
-	CAN->FFA1R &= (uint32_t) ~CAN_FFA1R_FFA0;
+	CAN->FFA1R &= (uint32_t) ~bankFlag;
 
 	// activate filter, then disable filter init mode
-	CAN->FA1R |= CAN_FA1R_FACT1;
+	CAN->FA1R |= bankFlag;
 	CAN->FMR &= (uint32_t) ~CAN_FMR_FINIT;
+
+	// success
+	return 0;
 }
 
 
 /**
  * Are there any messages waiting to be read?
  */
-bool canbus_messages_available(void) {
+bool can_messages_available(void) {
 	// check the entire receive queue
 	for(int i = 0; i < kRxBufferSize; i++) {
 		// is this message valid?
@@ -197,7 +190,7 @@ bool canbus_messages_available(void) {
 /**
  * Were messages dropped since the last invocation of this function?
  */
-bool canbus_messages_dropped(void) {
+bool can_messages_dropped(void) {
 	// get state and reset it
 	bool state = droppedMessages;
 	droppedMessages = false;
@@ -209,7 +202,7 @@ bool canbus_messages_dropped(void) {
  * Copies the oldest message to the specified buffer, then removes it from the
  * internal queue.
  */
-int canbus_get_last_message(canbus_message_t *msg) {
+int can_get_last_message(can_message_t *msg) {
 	// buffer cannot be null
 	if(msg == NULL) {
 		return -1;
@@ -220,7 +213,7 @@ int canbus_get_last_message(canbus_message_t *msg) {
 		// is this message valid?
 		if(rxBuffer[i].valid) {
 			// copy message
-			memcpy(msg, &rxBuffer[i], sizeof(canbus_message_t));
+			memcpy(msg, &rxBuffer[i], sizeof(can_message_t));
 
 			// mark that slot as available, return index of message
 			rxBuffer[i].valid = 0;
@@ -238,16 +231,16 @@ int canbus_get_last_message(canbus_message_t *msg) {
 /**
  * Transmits the given message.
  */
-int canbus_transmit_message(canbus_message_t *msg) {
+int can_transmit_message(can_message_t *msg) {
 	// find a free transmit mailbox
-	int box = canbus_find_free_tx_mailbox();
+	int box = can_find_free_tx_mailbox();
 
 	if(box < 0) {
 		return -1;
 	}
 
 	// attempt to transmit message into that mailbox
-	return canbus_tx_with_mailbox(box, msg);
+	return can_tx_with_mailbox(box, msg);
 }
 
 
@@ -257,7 +250,7 @@ int canbus_transmit_message(canbus_message_t *msg) {
  *
  * Currently, we only use mailbox 0.
  */
-int canbus_find_free_tx_mailbox(void) {
+int can_find_free_tx_mailbox(void) {
 	while(true) {
 		// is mailbox 0 empty?
 		if((CAN->TSR & CAN_TSR_TME0) == CAN_TSR_TME0) {
@@ -282,8 +275,8 @@ int canbus_find_free_tx_mailbox(void) {
 /**
  * Transmits the given message on the given mailbox.
  */
-int canbus_tx_with_mailbox(int mailbox, canbus_message_t *msg) {
-	uint32_t reqAckFlag, txOkFlag;
+int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
+	uint32_t reqAckFlag = 0, txOkFlag = 0;
 
 	// get the right flags
 	switch(mailbox) {
@@ -347,15 +340,15 @@ void CEC_CAN_IRQHandler(void) {
 		while(fifo0_pending || fifo1_pending) {
 			// is there any pending messages in FIFO 0?
 			if(fifo0_pending) {
-				canbus_read_fifo(0);
+				can_read_fifo(0);
 			}
 			// are there any pending messages in FIFO 1?
 			if(fifo1_pending) {
-				canbus_read_fifo(1);
+				can_read_fifo(1);
 			}
 
 			// check for overruns
-			canbus_check_fifo_overrun();
+			can_check_fifo_overrun();
 
 			// re-check fifo status
 			fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
@@ -367,7 +360,7 @@ void CEC_CAN_IRQHandler(void) {
 /**
  * Reads a message from the specified FIFO.
  */
-void canbus_read_fifo(int fifo) {
+void can_read_fifo(int fifo) {
 	// find a free slot in the receive buffer
 	int freeRxSlot = -1;
 
@@ -399,7 +392,7 @@ void canbus_read_fifo(int fifo) {
 	}
 
 	// get the identifier of the message
-	canbus_message_t *msg = &rxBuffer[freeRxSlot];
+	can_message_t *msg = &rxBuffer[freeRxSlot];
 
 	msg->valid = 1;
 	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
@@ -415,7 +408,7 @@ void canbus_read_fifo(int fifo) {
 /**
  * Checks whether the receive FIFOs were overrun.
  */
-void canbus_check_fifo_overrun(void) {
+void can_check_fifo_overrun(void) {
 	// was FIFO0 overrun?
 	if(CAN->RF0R & CAN_RF0R_FOVR0) {
 		droppedMessages = true;

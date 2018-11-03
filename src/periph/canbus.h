@@ -15,8 +15,8 @@
  *      Author: tristan
  */
 
-#ifndef CANBUS_H_
-#define CANBUS_H_
+#ifndef can_H_
+#define can_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -37,65 +37,69 @@ typedef struct {
 	uint8_t length;
 	/// data
 	char data[8];
-} canbus_message_t;
+} can_message_t;
 
 
 
 /**
  * Initializes the CAN peripheral.
  */
-void canbus_init(void);
+void can_init(void);
 
 /**
  * Starts the CAN driver.
  */
-void canbus_start(void);
+void can_start(void);
 
 /**
  * Stops the CAN driver.
  */
-void canbus_stop(void);
+void can_stop(void);
 
 
 
 /**
- * Configures the exact identifier filter.
+ * Configures a filter bank to work as an exact identifier filter.
+ *
+ * @param bank The bank to configure: this should be [1, 14].
  *
  * @note Only the low 29 bits are considered.
  */
-void canbus_filter_exact(uint32_t identifier);
+int can_filter_exact(unsigned int bank, uint32_t identifier);
 
 /**
- * Configures the mask identifier filter.
+ * Configures a filter bank to work as a mask identifier filter.
+ *
+ * @param bank The bank to configure: this should be [1, 14].
  *
  * @note Only the low 29 bits of the identifier and mask are considered.
  */
-void canbus_filter_mask(uint32_t mask, uint32_t identifier);
+int can_filter_mask(unsigned int bank, uint32_t mask, uint32_t identifier);
 
 
 /**
  * Are there any messages waiting to be read?
  */
-bool canbus_messages_available(void);
+bool can_messages_available(void);
 
 /**
  * Were messages dropped since the last invocation of this function?
  */
-bool canbus_messages_dropped(void);
+bool can_messages_dropped(void);
 
 /**
  * Copies the oldest message to the specified buffer, then removes it from the
  * internal queue.
  */
-int canbus_get_last_message(canbus_message_t *msg);
+int can_get_last_message(can_message_t *msg);
 
 
 
 /**
  * Transmits the given message.
  */
-int canbus_transmit_message(canbus_message_t *msg);
+int can_transmit_message(can_message_t *msg);
 
 
 
-#endif /* CANBUS_H_ */
+#endif /* can_H_ */
