@@ -22,6 +22,22 @@
 #include <stdbool.h>
 
 /**
+ * CAN bus errors
+ */
+enum {
+	/// no tx mailbox is free to send this frame, try again later
+	kErrCanNoFreeMailbox			= -2000,
+	/// frame is invalid
+	kErrCanInvalidFrame				= -2001,
+	/// no frames received since last call
+	kErrCanNoRxFramesPending		= -2002,
+	/// tx timeout. maybe broken bus?
+	kErrCanTxTimeout				= -2003,
+};
+
+
+
+/**
  * A single CAN message.
  */
 typedef struct {

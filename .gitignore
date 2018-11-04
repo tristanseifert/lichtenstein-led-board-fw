@@ -1,6 +1,7 @@
 # Build folders
-Debug/
-Release/
+/Debug
+/Debug-STM32F072
+/Release
 
 
 # Created by https://www.gitignore.io/api/eclipse

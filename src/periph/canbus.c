@@ -1,8 +1,13 @@
 /*
  * canbus.c
  *
+ * On the STM32F042 based hardware:
  * CAN_RX:	PA11
  * CAN_TX:	PA12
+ *
+ * On the STM32F072 Nucleo64 board:
+ * CAN_RX:	PB8
+ * CAN_TX:	PB9
  *
  * BTR register value calculated with http://www.bittiming.can-wiki.info/
  *
@@ -37,7 +42,8 @@ void can_init(void) {
 	// clear the receive buffer
 	memset(&rxBuffer, 0, sizeof(rxBuffer));
 
-	// enable GPIO/SYSCFG clocks, then remap PA11/PA12 to the pins
+#ifdef STM32F042
+	// enable GPIO, SYSCFG clocks, then remap PA11/PA12 to the pins
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
 
@@ -46,6 +52,23 @@ void can_init(void) {
 	// configure PA11 and PA12 as high speed alternate function outputs
 	GPIOA->MODER |= (GPIO_MODER_MODER11_1 | GPIO_MODER_MODER12_1);
 	GPIOA->OSPEEDR |= (GPIO_OSPEEDER_OSPEEDR11 | GPIO_OSPEEDER_OSPEEDR12);
+
+	// configure PA11 and PA12 alternate functions
+	GPIOB->AFR[1] |= 0x04 << (3 * 4);
+	GPIOB->AFR[1] |= 0x04 << (4 * 4);
+#endif
+#ifdef STM32F072
+	// enable GPIO clocks
+	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
+	// configure PB8 and PB9 as high speed alternate function outputs
+	GPIOB->MODER |= (GPIO_MODER_MODER8_1 | GPIO_MODER_MODER9_1);
+	GPIOB->OSPEEDR |= (GPIO_OSPEEDER_OSPEEDR8 | GPIO_OSPEEDER_OSPEEDR9);
+
+	// configure PB8 and PB9 alternate functions
+	GPIOB->AFR[1] |= 0x04 << (0 * 4);
+	GPIOB->AFR[1] |= 0x04 << (1 * 4);
+#endif
 
 	// enable CAN clock and reset
 	RCC->APB1ENR |= RCC_APB1ENR_CANEN;
@@ -139,7 +162,8 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
 	unsigned int bank = _bank - 1;
 
 	if(bank > 13) {
-		return -1;
+		LOG("invalid bank: %u\n", bank);
+		return kErrInvalidArgs;
 	}
 
 	uint32_t bankFlag = 1UL << (bank);
@@ -166,7 +190,7 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
 	CAN->FMR &= (uint32_t) ~CAN_FMR_FINIT;
 
 	// success
-	return 0;
+	return kErrSuccess;
 }
 
 
@@ -205,7 +229,7 @@ bool can_messages_dropped(void) {
 int can_get_last_message(can_message_t *msg) {
 	// buffer cannot be null
 	if(msg == NULL) {
-		return -1;
+		return kErrInvalidArgs;
 	}
 
 	// find an available message
@@ -223,7 +247,7 @@ int can_get_last_message(can_message_t *msg) {
 	}
 
 	// no messages were available :(
-	return -1;
+	return kErrCanNoRxFramesPending;
 }
 
 
@@ -236,7 +260,7 @@ int can_transmit_message(can_message_t *msg) {
 	int box = can_find_free_tx_mailbox();
 
 	if(box < 0) {
-		return -1;
+		return kErrCanNoFreeMailbox;
 	}
 
 	// attempt to transmit message into that mailbox
@@ -269,7 +293,7 @@ int can_find_free_tx_mailbox(void) {
 	}
 
 	// no mailbox could be found that's free
-	return -1;
+	return kErrCanNoFreeMailbox;
 }
 
 /**
@@ -295,14 +319,26 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 	}
 
 	// set the address into the mailbox; use identifier extension, data frame
-	CAN->sTxMailBox[mailbox].TIR = ((msg->identifier & 0x1FFFFFFFUL) << 3) | 0x04;
+	uint32_t TIR = 0x04;
+	TIR |= (msg->identifier & 0x1FFFFFFFUL) << 3;
+
+	if(msg->rtr) {
+		TIR |= 0x02;
+	}
+
+	CAN->sTxMailBox[mailbox].TIR = TIR;
 
 	// set data length
 	CAN->sTxMailBox[mailbox].TDTR = msg->length;
 
-	// copy data
-	memcpy((uint32_t *) &CAN->sTxMailBox[mailbox].TDLR, &msg->data[0], 4);
-	memcpy((uint32_t *) &CAN->sTxMailBox[mailbox].TDHR, &msg->data[4], 4);
+	// copy low byte of data
+	uint32_t data;
+
+	data = (msg->data[3] << 24) | (msg->data[2] << 16) | (msg->data[1] << 8) | (msg->data[0] << 0);
+	CAN->sTxMailBox[mailbox].TDLR = data;
+
+	data = (msg->data[7] << 24) | (msg->data[6] << 16) | (msg->data[5] << 8) | (msg->data[4] << 0);
+	CAN->sTxMailBox[mailbox].TDHR = data;
 
 	// request transmission of mailbox 0, and wait for request acknowledgement
 	CAN->sTxMailBox[mailbox].TIR |= 0x00000001;
@@ -311,7 +347,7 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 	// wait for the message to have been transmitted successfully
 	// TODO: timeout if CAN physical layer got fucked
 	while(!(CAN->TSR & txOkFlag)) {}
-	return 0;
+	return kErrSuccess;
 }
 
 

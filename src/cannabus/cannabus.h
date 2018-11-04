@@ -17,8 +17,9 @@
  * CANnabus error codes
  */
 enum {
-	kCannabusErrUnimplemented	= -42000,
-	kCannabusErrNodeIdMismatch	= -42001,
+	kErrCannabusUnimplemented		= -42000,
+	kErrCannabusNodeIdMismatch		= -42001,
+	kErrCannabusInvalidFrameSize	= -42002,
 };
 
 /**
@@ -93,12 +94,12 @@ typedef struct {
 /**
  * Initializes the CANnabus and sets this node's address.
  */
-void cannabus_init(cannabus_addr_t addr, cannabus_callbacks_t *callbacks);
+int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t *callbacks);
 
 /**
  * Changes the node's address.
  */
-void cannabus_set_address(cannabus_addr_t addr);
+int cannabus_set_address(cannabus_addr_t addr);
 
 
 

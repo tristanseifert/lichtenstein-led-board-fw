@@ -21,6 +21,9 @@ typedef struct {
 	/// node address
 	cannabus_addr_t address;
 
+	/// device type
+	uint8_t deviceType;
+
 	/// number of received frames
 	unsigned int rxFrames;
 	/// number of sent frames
@@ -55,5 +58,10 @@ bool cannabus_is_op_internal(cannabus_operation_t *op);
  * Handles an internal CANnabus operation.
  */
 int cannabus_internal_op(cannabus_operation_t *op);
+
+/**
+ * Handles reads/writes to the Device ID (0x0000) register.
+ */
+int cannabus_internal_reg_deviceid(cannabus_operation_t *op);
 
 #endif /* CANNABUS_CANNABUS_PRIVATE_H_ */
