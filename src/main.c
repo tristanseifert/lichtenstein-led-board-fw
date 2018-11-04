@@ -186,12 +186,6 @@ static void init_cannabus(void) {
 int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
 	int err;
 
-	// blinky (PA5)
-	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-	GPIOA->MODER |= GPIO_MODER_MODER5_0;
-
-	int led = 0;
-
 	// initialize trace
 	trace_initialize();
 	LOG("lichtenstein-led-fw %s\n", GIT_INFO);
@@ -202,21 +196,6 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 #ifdef STM32F072
 	LOG_PUTS("hw: STM32F072");
 #endif
-
-	/*while(1) {
-		// set LED status
-		led = !led;
-
-		if(led) {
-			GPIOA->ODR |= GPIO_ODR_5;
-		} else {
-			GPIOA->ODR &= ~GPIO_ODR_5;
-		}
-
-		// sleep
-		for(volatile int i = 0; i < 300000; i++) {}
-	}*/
-
 
 	// initialize hardware/peripherals
 	init_hardware();
@@ -234,29 +213,6 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// enter main loop
 	while(1) {
-/*		// transmit periodic test messages
-		can_message_t msg;
-		memset(&msg, 0, sizeof(msg));
-
-		msg.identifier = 0x0420BEEF;
-		msg.rtr = 0;
-		msg.length = 8;
-
-		msg.data[0] = 'I';
-		msg.data[1] = 'm';
-		msg.data[2] = '2';
-		msg.data[3] = 'H';
-		msg.data[4] = 'i';
-		msg.data[5] = 'g';
-		msg.data[6] = 'h';
-		msg.data[7] = 'e';
-
-		err = can_transmit_message(&msg);
-
-		if(err < kErrSuccess) {
-			LOG("can_transmit_message: %d", err);
-		}*/
-
 		// process waiting CANnabus messages
 		err = cannabus_process();
 
@@ -264,20 +220,11 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 			LOG("cannabus_process failed: %d", err);
 		}
 
-		// set LED status
-		led = !led;
-
-		if(led) {
-			GPIOA->ODR |= GPIO_ODR_5;
-		} else {
-			GPIOA->ODR &= ~GPIO_ODR_5;
-		}
-
 		// wait
-		for(volatile int i = 0; i < 800000; i++) {}
+//		for(volatile int i = 0; i < 800000; i++) {}
 
 		// wait for an interrupt
-//		__WFI();
+		__WFI();
 	}
 
 	// never should get here

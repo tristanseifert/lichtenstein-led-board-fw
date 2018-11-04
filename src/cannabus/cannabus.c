@@ -65,7 +65,7 @@ int cannabus_set_address(cannabus_addr_t addr) {
 
 	// set address in state
 	gState.address = addr;
-	LOG("CANnabus address: %x", addr);
+	LOG("CANnabus address: %x\n", addr);
 
 	// update the filters on the CAN peripheral
 	err = gState.callbacks.can_config_filter(2, 0x07FFF800, (uint32_t) (addr << 11));
@@ -150,11 +150,11 @@ int cannabus_send_op(cannabus_operation_t *op) {
 int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t *op) {
 	// extract relevant fields from identifier
 	uint16_t nodeId = (uint16_t) (frame->identifier >> 11) & 0xFFFF;
-	uint16_t reg = (uint16_t) (frame->identifier & 0x1FFF);
+	uint16_t reg = (uint16_t) (frame->identifier & 0x7FF);
 //	uint8_t priority = (frame->identifier >> 27) & 0x03;
 
 	// check this frame is destined for us? insurance against fucked filters
-	if(nodeId != gState.address) {
+	if(nodeId != gState.address && nodeId != 0xFFFF) {
 		return kErrCannabusNodeIdMismatch;
 	}
 
@@ -177,7 +177,7 @@ int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t 
  */
 int cannabus_conv_op_to_frame(cannabus_operation_t *op, cannabus_can_frame_t *frame) {
 	// build the identifier
-	uint32_t identifier = (uint32_t) ((op->reg & 0x1FFF) | (gState.address << 11));
+	uint32_t identifier = (uint32_t) ((op->reg & 0x7FF) | (gState.address << 11));
 
 	// copy parameters to frame
 	frame->identifier = identifier;
@@ -211,14 +211,14 @@ bool cannabus_is_op_internal(cannabus_operation_t *op) {
  */
 int cannabus_internal_op(cannabus_operation_t *op) {
 	switch(op->reg) {
-	// device id register
-	case 0x0000:
-		return cannabus_internal_reg_deviceid(op);
+		// device id register
+		case 0x000:
+			return cannabus_internal_reg_deviceid(op);
 
 
-	// unknown registers
-	default:
-		return kErrCannabusUnimplemented;
+		// unknown registers
+		default:
+			return kErrCannabusUnimplemented;
 	}
 }
 
@@ -228,46 +228,66 @@ int cannabus_internal_op(cannabus_operation_t *op) {
 int cannabus_internal_reg_deviceid(cannabus_operation_t *_op) {
 	int err = kErrCannabusUnimplemented;
 
-	// if it's an RTR frame, send the device id register
-	if(_op->rtr) {
-		// build a CAN frame to transmit
-		cannabus_operation_t op;
-		memcpy(&op, _op, sizeof(op));
-
-		op.rtr = 0;
-		op.data_len = 7;
-
-		// clear data field
-		memset(&op.data, 0, 8);
-
-		// device id
-		op.data[0] = (uint8_t) (gState.address & 0xFF00) >> 8;
-		op.data[1] = (uint8_t) (gState.address & 0x00FF);
-
-		// supported CANnabus version and device type
-		op.data[2] = kCannabusVersion;
-		op.data[3] = gState.deviceType;
-
-		// TODO: handle firmware update capabilities
-
-		// transmit the frame
-		err = cannabus_send_op(&op);
-	}
-	// otherwise, process a write of the register data
-	else {
-		// make sure that we received at least two bytes
-		if(_op->data_len < 2) {
-			return kErrCannabusInvalidFrameSize;
+	// is this a broadcast frame?
+	if(_op->broadcast) {
+		// if so, respond with our device id register
+		err = cannabus_internal_reg_deviceid_respond(_op);
+	} else {
+		// if it's an RTR frame, send the device id register
+		if(_op->rtr) {
+			err = cannabus_internal_reg_deviceid_respond(_op);
 		}
+		// otherwise, process a write of the register data
+		else {
+			// make sure that we received at least two bytes
+			if(_op->data_len < 2) {
+				return kErrCannabusInvalidFrameSize;
+			}
 
-		// the only value that can be written is the device id
-		cannabus_addr_t deviceId;
+			// the only value that can be written is the device id
+			cannabus_addr_t deviceId;
 
-		deviceId = (uint16_t) ((_op->data[0] << 8) | (_op->data[1]));
+			deviceId = (uint16_t) ((_op->data[0] << 8) | (_op->data[1]));
 
-		err = cannabus_set_address(deviceId);
-		LOG("updated device id: %x", deviceId);
+			err = cannabus_set_address(deviceId);
+			LOG("updated device id: %x", deviceId);
+		}
 	}
 
+	return err;
+}
+
+
+/**
+ * Sends the device ID response.
+ */
+int cannabus_internal_reg_deviceid_respond(cannabus_operation_t *_op) {
+	int err;
+
+	// build a CAN frame to transmit
+	cannabus_operation_t op;
+
+	op.broadcast = 0;
+	op.reg = 0x000;
+	op.rtr = 0;
+	op.data_len = 8;
+
+	// clear data field
+	memset(&op.data, 0, 8);
+
+	// device id
+	op.data[0] = (uint8_t) ((gState.address & 0xFF00) >> 8);
+	op.data[1] = (uint8_t) (gState.address & 0x00FF);
+
+	// supported CANnabus version and device type
+	op.data[2] = kCannabusVersion;
+	op.data[3] = gState.deviceType;
+
+	// TODO: handle firmware update capabilities field
+
+	// transmit the frame
+	err = cannabus_send_op(&op);
+
+	// done
 	return err;
 }

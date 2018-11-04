@@ -357,7 +357,8 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
  */
 void CEC_CAN_IRQHandler(void) {
 	// was this a CAN IRQ?
-	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
+//	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
+	if(1) {
 		uint32_t masterIrq = CAN->MSR;
 
 		// is this an error interrupt?
@@ -437,8 +438,23 @@ void can_read_fifo(int fifo) {
 	// copy the data out of the register
 	msg->length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
 
-	memcpy(&msg->data[0], (uint32_t *) &CAN->sFIFOMailBox[fifo].RDLR, 4);
-	memcpy(&msg->data[4], (uint32_t *) &CAN->sFIFOMailBox[fifo].RDHR, 4);
+	uint32_t data;
+
+	// read low word of data
+	data = CAN->sFIFOMailBox[fifo].RDLR;
+
+	msg->data[0] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg->data[1] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg->data[2] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg->data[3] = (uint8_t) ((data & 0xFF000000) >> 24);
+
+	// read high word of data
+	data = CAN->sFIFOMailBox[fifo].RDHR;
+
+	msg->data[4] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg->data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg->data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg->data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
 }
 
 /**

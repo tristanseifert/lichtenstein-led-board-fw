@@ -64,4 +64,9 @@ int cannabus_internal_op(cannabus_operation_t *op);
  */
 int cannabus_internal_reg_deviceid(cannabus_operation_t *op);
 
+/**
+ * Sends the device ID response.
+ */
+int cannabus_internal_reg_deviceid_respond(cannabus_operation_t *op);
+
 #endif /* CANNABUS_CANNABUS_PRIVATE_H_ */

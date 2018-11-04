@@ -59,7 +59,7 @@ typedef struct {
 	uint16_t rtr		: 1;
 
 	/// how many bytes of data do we have?
-	uint16_t data_len	: 3;
+	uint8_t data_len;
 	/// data (up to 8 bytes)
 	uint8_t data[8];
 } cannabus_operation_t;

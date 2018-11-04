@@ -52,7 +52,7 @@ typedef struct {
 	/// data length
 	uint8_t length;
 	/// data
-	char data[8];
+	uint8_t data[8];
 } can_message_t;
 
 
