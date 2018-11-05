@@ -77,12 +77,12 @@ void can_init(void) {
 	for(volatile int i = 0; i < 32; i++) {}
 	RCC->APB1RSTR &= ~RCC_APB1RSTR_CANRST;
 
+	// exit sleep mode
+	CAN->MCR &= (uint32_t) ~CAN_MCR_SLEEP;
+
 	// enter initialization mode
 	CAN->MCR |= CAN_MCR_INRQ;
 	while(!(CAN->MSR & CAN_MSR_INAK)) {}
-
-	// exit sleep mode
-	CAN->MCR &= (uint32_t) ~CAN_MCR_SLEEP;
 
 	/*
 	 * Configure CAN master control:
@@ -90,9 +90,10 @@ void can_init(void) {
 	 * - Automatic bus-off management
 	 * - Automatic wake-up mode
 	 * - Discard messages if FIFO is full
+	 * - No automatic retransmissions
 	 *
 	 */
-	CAN->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_RFLM;
+	CAN->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM/* | CAN_MCR_RFLM *//*| CAN_MCR_NART*/;
 
 	/**
 	 * Enable CAN interrupts:
@@ -162,7 +163,7 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
 	unsigned int bank = _bank - 1;
 
 	if(bank > 13) {
-		LOG("invalid bank: %u\n", bank);
+//		LOG("invalid bank: %u\n", bank);
 		return kErrInvalidArgs;
 	}
 
@@ -240,7 +241,8 @@ int can_get_last_message(can_message_t *msg) {
 			memcpy(msg, &rxBuffer[i], sizeof(can_message_t));
 
 			// mark that slot as available, return index of message
-			rxBuffer[i].valid = 0;
+//			rxBuffer[i].valid = 0;
+			memset(&rxBuffer[i], 0, sizeof(can_message_t));
 
 			return i;
 		}
@@ -364,7 +366,7 @@ void CEC_CAN_IRQHandler(void) {
 		// is this an error interrupt?
 		if(masterIrq & CAN_MSR_ERRI) {
 			// TODO: handle error interrupts
-			LOG_PUTS("CAN error");
+			LOG("CAN error: %x\n", CAN->ESR);
 
 			// acknowledge error interrupt
 			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
@@ -375,6 +377,7 @@ void CEC_CAN_IRQHandler(void) {
 		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
 
 		while(fifo0_pending || fifo1_pending) {
+//		if(fifo0_pending || fifo1_pending) {
 			// is there any pending messages in FIFO 0?
 			if(fifo0_pending) {
 				can_read_fifo(0);
@@ -412,20 +415,8 @@ void can_read_fifo(int fifo) {
 
 	// if no free slot was found, return. we will probably loose this message
 	if(freeRxSlot == -1) {
+		LOG_PUTS("discarded CAN message");
 		return;
-	}
-
-	// release message from the FIFO
-	if(fifo == 0) {
-		CAN->RF0R |= CAN_RF0R_RFOM0;
-
-		// wait for the mailbox to be released
-		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
-	} else if(fifo == 1) {
-		CAN->RF1R |= CAN_RF1R_RFOM1;
-
-		// wait for the mailbox to be released
-		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
 	}
 
 	// get the identifier of the message
@@ -455,6 +446,25 @@ void can_read_fifo(int fifo) {
 	msg->data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
 	msg->data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
 	msg->data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
+
+	// release message from the FIFO
+	if(fifo == 0) {
+		CAN->RF0R |= CAN_RF0R_RFOM0;
+
+		// wait for the mailbox to be released
+//		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
+	} else if(fifo == 1) {
+		CAN->RF1R |= CAN_RF1R_RFOM1;
+
+		// wait for the mailbox to be released
+//		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+	}
+
+	// log
+	/*LOG("received to slot %u: id %x, len %u, %x %x\n", freeRxSlot,
+			msg->identifier, msg->length,
+			CAN->sFIFOMailBox[fifo].RDLR,
+			CAN->sFIFOMailBox[fifo].RDHR);*/
 }
 
 /**

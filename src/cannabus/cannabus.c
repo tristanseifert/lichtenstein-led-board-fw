@@ -92,6 +92,8 @@ int cannabus_process(void) {
 
 		if(err < kErrSuccess) {
 			return err;
+		} else {
+			gState.rxFrames++;
 		}
 
 		// convert this message into a CANnabus operation
@@ -139,7 +141,14 @@ int cannabus_send_op(cannabus_operation_t *op) {
 	}
 
 	// now, transmit the frame
-	return gState.callbacks.can_tx_message(&frame);
+	err = gState.callbacks.can_tx_message(&frame);
+
+	if(err >= kErrSuccess) {
+		// increment send counter
+		gState.txFrames++;
+	}
+
+	return err;
 }
 
 
@@ -261,19 +270,15 @@ int cannabus_internal_reg_deviceid(cannabus_operation_t *_op) {
 /**
  * Sends the device ID response.
  */
-int cannabus_internal_reg_deviceid_respond(cannabus_operation_t *_op) {
+int cannabus_internal_reg_deviceid_respond(cannabus_operation_t *_op __attribute__((__unused__))) {
 	int err;
 
 	// build a CAN frame to transmit
 	cannabus_operation_t op;
+	memset(&op, 0, sizeof(op));
 
-	op.broadcast = 0;
 	op.reg = 0x000;
-	op.rtr = 0;
 	op.data_len = 8;
-
-	// clear data field
-	memset(&op.data, 0, 8);
 
 	// device id
 	op.data[0] = (uint8_t) ((gState.address & 0xFF00) >> 8);

@@ -323,17 +323,12 @@ _start (void)
   // clock frequency in the global CMSIS variable, cleared above.
   __initialize_hardware ();
 
-  // Get the argc/argv (useful in semihosting configurations).
-  int argc;
-  char** argv;
-  __initialize_args (&argc, &argv);
-
   // Call the standard library initialisation (mandatory for C++ to
   // execute the constructors for the static objects).
   __run_init_array ();
 
   // Call the main entry point, and save the exit code.
-  int code = main (argc, argv);
+  int code = main(0, NULL);
 
   // Run the C++ static destructors.
   __run_fini_array ();

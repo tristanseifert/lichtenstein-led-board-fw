@@ -124,7 +124,7 @@ static int cannabus_cb_can_rx_message(cannabus_can_frame_t *frame) {
 
 	memcpy(&frame->data, &rawFrame.data, 8);
 
-	LOG("CANnabus rx from %x, %u bytes\n", rawFrame.identifier, rawFrame.length);
+//	LOG("CANnabus rx from %x, %u bytes\n", rawFrame.identifier, rawFrame.length);
 
 	// success!
 	return kErrSuccess;
@@ -135,7 +135,7 @@ static int cannabus_cb_can_rx_message(cannabus_can_frame_t *frame) {
 static int cannabus_cb_can_tx_message(cannabus_can_frame_t *frame) {
 	int err;
 
-	LOG("CANnabus tx to %x, %u bytes\n", frame->identifier, frame->data_len);
+//	LOG("CANnabus tx to %x, %u bytes\n", frame->identifier, frame->data_len);
 
 	// create a CAN driver frame structure
 	can_message_t rawFrame;
@@ -223,7 +223,7 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	// enter main loop
 	while(1) {
 		// take a measurement of the ADC inputs
-		adc_measure_begin();
+//		adc_measure_begin();
 
 		// process waiting CANnabus messages
 		err = cannabus_process();
@@ -236,7 +236,7 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 //		for(volatile int i = 0; i < 800000; i++) {}
 
 		// wait for an interrupt
-		__WFI();
+//		__WFI();
 	}
 
 	// never should get here

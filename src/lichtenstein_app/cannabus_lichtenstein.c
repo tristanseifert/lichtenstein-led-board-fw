@@ -9,6 +9,9 @@
 
 #include "../cannabus/cannabus.h"
 
+#include "../hw/output_mux.h"
+#include "../hw/differential_rx.h"
+
 #include "../periph/adc.h"
 
 #include "lichtenstein.h"
@@ -22,14 +25,21 @@
 int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
 	// handle requests (RTR = 1)
 	if(op->rtr) {
-		// read ADC state (reg = 0x10)
+		// read ADC state (reg = 0x010)
 		if(op->reg == 0x010) {
 			return lichtenstein_cannabus_adc();
 		}
 	}
 	// handle register writes (RTR = 0)
 	else {
-		// TODO: handle
+		// set mux state (reg = 0x011)
+		if(op->reg == 0x011) {
+			return lichtenstein_cannabus_muxctrl(op);
+		}
+		// set differential driver state (reg = 0x012)
+		else if(op->reg == 0x012) {
+			return lichtenstein_canbus_diffrxctrl(op);
+		}
 	}
 
 	// if we fall down here, whatever operation was not handled
@@ -81,4 +91,55 @@ int lichtenstein_cannabus_adc(void) {
 
 	// send frame
 	return cannabus_send_op(&op);
+}
+
+
+/**
+ * Handles a write to the MUX control register. (Reg 0x011)
+ */
+int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op) {
+	// we must get two bytes of data
+	if(op->data_len != 2) {
+		return kErrCannabusInvalidFrameSize;
+	}
+
+//	LOG("mux status: %x %x\n", op->data[0], op->data[1]);
+
+	// mux 0 state: zero is differential receiver, any other value is test gen
+	if(op->data[0]) {
+		mux_set_state(kMux0, kMuxStateTestGenerator);
+	} else {
+		mux_set_state(kMux0, kMuxStateDifferentialReceiver);
+	}
+
+	// mux 1 state: zero is differential receiver, any other value is test gen
+	if(op->data[1]) {
+		mux_set_state(kMux1, kMuxStateTestGenerator);
+	} else {
+		mux_set_state(kMux1, kMuxStateDifferentialReceiver);
+	}
+
+	// success
+	return kErrSuccess;
+}
+
+
+/**
+ * Handles a write to the differential receiver control register. (Reg 0x012)
+ */
+int lichtenstein_canbus_diffrxctrl(cannabus_operation_t *op) {
+	// we must get a single byte of data
+	if(op->data_len != 1) {
+		return kErrCannabusInvalidFrameSize;
+	}
+
+	// if 0 driver is disabled, enabled otherwise
+	if(op->data[0]) {
+		diffrx_set_state(kDiffRxEnabled);
+	} else {
+		diffrx_set_state(kDiffRxDisabled);
+	}
+
+	// success
+	return kErrSuccess;
 }
