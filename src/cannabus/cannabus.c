@@ -198,7 +198,7 @@ int cannabus_conv_op_to_frame(cannabus_operation_t *op, cannabus_can_frame_t *fr
  */
 bool cannabus_is_op_internal(cannabus_operation_t *op) {
 	// CANnabus protocol handles 0x0000 - 0x0003 rn
-	if(op->reg <= 0x0003) {
+	if(op->reg == 0x000) {
 		return true;
 	}
 

@@ -38,11 +38,14 @@
 #include "hw/ws2811_generator.h"
 #include "periph/spi.h"
 #include "periph/canbus.h"
+#include "periph/adc.h"
 
 #include "hw/spi_flash.h"
 #include "hw/nvram.h"
 
 #include "cannabus/cannabus.h"
+
+#include "lichtenstein_app/cannabus_lichtenstein.h"
 
 #include "gitcommit.h"
 
@@ -50,16 +53,32 @@
  * Performs initialization of all hardware.
  */
 static void init_hardware(void) {
+#ifdef STM32F042
+	// first, initialize the hardware
+	mux_init();
+	diffrx_init();
+	ws2811_init();
+	spi_init();
+	can_init();
+	adc_init();
+
+	// then, init flash and read the config
+	spiflash_init();
+	nvram_init();
+#endif
+#ifdef STM32F072
 	// first, initialize the hardware
 //	mux_init();
 //	diffrx_init();
 //	ws2811_init();
-	spi_init();
+//	spi_init();
 	can_init();
+	adc_init();
 
 	// then, init flash and read the config
 //	spiflash_init();
 //	nvram_init();
+#endif
 }
 
 
@@ -133,16 +152,6 @@ static int cannabus_cb_can_tx_message(cannabus_can_frame_t *frame) {
 	err = can_transmit_message(&rawFrame);
 	return err;
 }
-/**
- * Handles a CANnabus operation that isn't handled internally by the CANnabus
- * stack.
- */
-static int cannabus_cb_handle_operation(cannabus_operation_t *op) {
-	LOG("cannabus op: reg %x, rtr %d\n", op->reg, op->rtr);
-
-	// TODO: implement, lol
-	return kErrCannabusUnimplemented;
-}
 
 /**
  * Initializes CANnabus communication.
@@ -167,7 +176,7 @@ static void init_cannabus(void) {
 		.can_rx_message = cannabus_cb_can_rx_message,
 		.can_tx_message = cannabus_cb_can_tx_message,
 
-		.handle_operation = cannabus_cb_handle_operation,
+		.handle_operation = lichtenstein_cannabus_cb,
 	};
 
 	// initialize bus
@@ -213,6 +222,9 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// enter main loop
 	while(1) {
+		// take a measurement of the ADC inputs
+		adc_measure_begin();
+
 		// process waiting CANnabus messages
 		err = cannabus_process();
 
