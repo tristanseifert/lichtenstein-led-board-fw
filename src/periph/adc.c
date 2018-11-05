@@ -9,6 +9,7 @@
 
 #include "lichtenstein.h"
 
+#include <stdint.h>
 #include <string.h>
 
 /// ADC state
@@ -141,4 +142,18 @@ void adc_read_data(void) {
 
 //		LOG_PUTS("adc stopped");
 	}
+}
+
+
+
+/**
+ * Normalizes an ADC measurement from a raw ADC value into a fixed-point voltage
+ * value.
+ *
+ * The value is in the form of a 16.16 fixed point value.
+ *
+ * This assumes that VDDA is 3.3V.
+ */
+uint32_t adc_normalize_value(unsigned int adc) {
+	return adc;
 }

@@ -13,6 +13,8 @@
 
 #include "lichtenstein.h"
 
+#include <string.h>
+
 /**
  * Handles a CANnabus operation that isn't handled internally by the CANnabus
  * stack.
@@ -41,14 +43,42 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
  * Gets ADC data, converts it, and sends it. (Reg 0x010)
  */
 int lichtenstein_cannabus_adc(void) {
+	uint32_t temp;
+
 	// get ADC data
 	unsigned int adcData[4];
 	adc_get_measure(&adcData);
 
 	LOG("V = %u, I = %u, temp = %u, ref = %u", adcData[0], adcData[1], adcData[2], adcData[3]);
 
-	// TODO: convert to meaningful data
+	// convert to 16 bit quantities
+	uint16_t convertedData[4];
+	memset(&convertedData, 0, sizeof(convertedData));
 
-	// TODO: send response
-	return kErrSuccess;
+	// convert voltage: it's 1/2 of the input voltage
+	temp = adc_normalize_value(adcData[0]);
+	convertedData[0] = (uint16_t) temp;
+
+	// convert current:
+	temp = adc_normalize_value(adcData[1]);
+	convertedData[1] = (uint16_t) temp;
+
+	// convert temperature
+	temp = adc_normalize_value(adcData[2]);
+	convertedData[2] = (uint16_t) temp;
+
+	// send raw vRef value
+	convertedData[3] = (uint16_t) adcData[3];
+
+	// send response
+	cannabus_operation_t op;
+	memset(&op, 0, sizeof(op));
+
+	op.reg = 0x010;
+	op.data_len = 8;
+
+	memcpy(&op.data, &convertedData, 8);
+
+	// send frame
+	return cannabus_send_op(&op);
 }

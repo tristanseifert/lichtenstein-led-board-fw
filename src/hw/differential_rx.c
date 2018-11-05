@@ -20,11 +20,9 @@ static diffrx_state_t gLastState = kDiffRxDisabled;
  * since the pin is shared with SPI_MOSI.
  */
 void diffrx_init(void) {
-	// enable GPIO clock
+	// enable GPIO clock and configure as output
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-
-	// configure GPIO as output
-	GPIOA->MODER |= GPIO_MODER_MODER8_0;
+	GPIOA->MODER |= GPIO_MODER_MODER7_0;
 
 	// set the last receiver state (or default if first reset)
 	diffrx_set_state(gLastState);
@@ -39,13 +37,13 @@ void diffrx_set_state(diffrx_state_t state) {
 
 	// update GPIO: the signal is active high
 	switch(state) {
-	case kDiffRxDisabled:
-		GPIOA->ODR &= (uint16_t) ~GPIO_ODR_7;
-		break;
+		case kDiffRxDisabled:
+			GPIOA->ODR &= (uint16_t) ~GPIO_ODR_7;
+			break;
 
-	case kDiffRxEnabled:
-		GPIOA->ODR |= GPIO_ODR_7;
-		break;
+		case kDiffRxEnabled:
+			GPIOA->ODR |= GPIO_ODR_7;
+			break;
 	}
 }
 

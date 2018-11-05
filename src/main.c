@@ -68,8 +68,8 @@ static void init_hardware(void) {
 #endif
 #ifdef STM32F072
 	// first, initialize the hardware
-//	mux_init();
-//	diffrx_init();
+	mux_init();
+	diffrx_init();
 //	ws2811_init();
 //	spi_init();
 	can_init();

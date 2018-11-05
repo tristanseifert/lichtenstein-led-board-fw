@@ -13,6 +13,8 @@
 #ifndef PERIPH_ADC_H_
 #define PERIPH_ADC_H_
 
+#include <stdint.h>
+
 /**
  * Initializes the ADC.
  */
@@ -29,6 +31,12 @@ void adc_measure_begin(void);
  * @param out An array of four integers.
  */
 void adc_get_measure(int *out);
+
+/**
+ * Normalizes an ADC measurement from a raw ADC value into a fixed-point voltage
+ * value.
+ */
+uint32_t adc_normalize_value(unsigned int adc);
 
 
 
