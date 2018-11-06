@@ -65,16 +65,22 @@ extern uint32_t SystemCoreClock;
 
 
 // debugging
-#define configUSE_TRACE_FACILITY		1
-#define configQUEUE_REGISTRY_SIZE		8
-#define configGENERATE_RUN_TIME_STATS	0
+#ifdef DEBUG
+	#define configUSE_TRACE_FACILITY		1
+	#define configQUEUE_REGISTRY_SIZE		8
+	#define configGENERATE_RUN_TIME_STATS	0
+#else
+	#define configUSE_TRACE_FACILITY		0
+	#define configQUEUE_REGISTRY_SIZE		0
+	#define configGENERATE_RUN_TIME_STATS	0
+#endif
 
 // stack overflow checking
 #define configCHECK_FOR_STACK_OVERFLOW	2
 #define configRECORD_STACK_HIGH_ADDRESS	1
 
 // semaphores
-#define configUSE_COUNTING_SEMAPHORES	1
+#define configUSE_COUNTING_SEMAPHORES	0
 
 // mutexes
 #define configUSE_MUTEXES				1
@@ -100,13 +106,13 @@ extern uint32_t SystemCoreClock;
 #define configTIMER_TASK_STACK_DEPTH	80
 
 // task-related API functions to include
-#define INCLUDE_vTaskPrioritySet		1
-#define INCLUDE_uxTaskPriorityGet		1
+#define INCLUDE_vTaskPrioritySet		0
+#define INCLUDE_uxTaskPriorityGet		0
 #define INCLUDE_vTaskDelete				0
 #define INCLUDE_vTaskCleanUpResources	0
 #define INCLUDE_vTaskSuspend			0
-#define INCLUDE_vTaskDelayUntil			1
-#define INCLUDE_vTaskDelay				1
+#define INCLUDE_vTaskDelayUntil			0
+#define INCLUDE_vTaskDelay				0
 
 
 // assert for FreeRTOS

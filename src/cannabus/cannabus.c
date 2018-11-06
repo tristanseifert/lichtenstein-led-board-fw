@@ -96,6 +96,7 @@ void cannabus_task(void *ctx __attribute__((unused))) {
 
 		if(err < kErrSuccess) {
 			LOG("can_rx_message: %d\n", err);
+			continue;
 		} else {
 			gState.rxFrames++;
 		}

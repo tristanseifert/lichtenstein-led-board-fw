@@ -35,12 +35,12 @@ int can_init(void) {
 	// clear state
 	memset(&gState, 0, sizeof(gState));
 
-	// create rx buffer semaphore
-	gState.rxSemaphore = xSemaphoreCreateCountingStatic(kCANRxBufferSize, 0,
-			&gState.rxSemaphoreStruct);
+	// create rx queue
+	gState.rxQueue = xQueueCreateStatic(kCANRxBufferSize, sizeof(can_message_t),
+			&gState.rxQueueBuffer, &gState.rxQueueStruct);
 
-	if(gState.rxSemaphore == NULL) {
-		return kErrSemaphoreCreationFailed;
+	if(gState.rxQueue == NULL) {
+		return kErrQueueCreationFailed;
 	}
 
 	// create the task
@@ -129,11 +129,12 @@ int can_init(void) {
  * Starts the CAN driver.
  */
 void can_start(void) {
+	// clear the queue
+	xQueueReset(gState.rxQueue);
+
 	// exit initialization mode; wait for INAK clear
 	CAN->MCR &= (uint32_t) ~CAN_MCR_INRQ;
 	while((CAN->MSR & CAN_MSR_INAK)) {}
-
-	// we should be good now, wait for the interrupts to come in
 }
 
 
@@ -214,8 +215,6 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
  * locations. The FreeRTOS notification field is used for this:
  *
  * - Bit 0: CAN error
- * - Bit 1: CAN frame received (FIFO 0)
- * - Bit 2: CAN frame received (FIFO 1)
  */
 void can_task(void) {
 	BaseType_t ok;
@@ -233,31 +232,6 @@ void can_task(void) {
 		if(notification & 0x01) {
 			LOG("CAN error: %x\n", CAN->ESR);
 		}
-		// was a frame received on FIFO 0?
-		if(notification & 0x02) {
-			uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
-
-			while(fifo0_pending) {
-				can_read_fifo(0);
-			}
-
-		}
-		// was a frame received on FIFO 1?
-		if(notification & 0x04) {
-			uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
-
-			while(fifo1_pending) {
-				can_read_fifo(1);
-			}
-		}
-
-		// check for FIFO overruns if either of the FIFOs were pending
-		if(notification & 0x06) {
-			can_check_fifo_overrun();
-
-			// also, re-enable IRQs
-			CAN->IER |= CAN_IER_FFIE0 | CAN_IER_FMPIE0;
-		}
 	}
 }
 
@@ -267,17 +241,7 @@ void can_task(void) {
  * Are there any messages waiting to be read?
  */
 bool can_messages_available(void) {
-	// check the entire receive queue
-	for(int i = 0; i < kCANRxBufferSize; i++) {
-		// is this message valid?
-		if(gState.rxBuffer[i].valid) {
-			// then yes, there are messages waiting
-			return true;
-		}
-	}
-
-	// if we get here, no messages available
-	return false;
+	return (uxQueueMessagesWaiting(gState.rxQueue) != 0);
 }
 
 /**
@@ -294,30 +258,14 @@ int can_get_last_message(can_message_t *msg) {
 		return kErrInvalidArgs;
 	}
 
-	// attempt to 'take' the RX semaphore
-	ok = xSemaphoreTake(gState.rxSemaphore, portMAX_DELAY);
+	// attempt to dequeue a message
+	ok = xQueueReceive(gState.rxQueue, msg, portMAX_DELAY);
 
 	if(ok != pdTRUE) {
-		LOG("xSemaphoreTake: %d\n", ok);
-		return kErrCanNoRxFramesPending;
+		return kErrQueueReceive;
 	}
 
-	// find an available message
-	for(int i = 0; i < kCANRxBufferSize; i++) {
-		// is this message valid?
-		if(gState.rxBuffer[i].valid) {
-			// copy message
-			memcpy(msg, &gState.rxBuffer[i], sizeof(can_message_t));
-
-			// mark that slot as available, return index of message
-			memset(&gState.rxBuffer[i], 0, sizeof(can_message_t));
-
-			return i;
-		}
-	}
-
-	// no messages were available :(
-	return kErrCanNoRxFramesPending;
+	return kErrSuccess;
 }
 
 
@@ -425,101 +373,6 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 
 
 /**
- * Reads a message from the specified FIFO.
- */
-void can_read_fifo(int fifo) {
-	BaseType_t ok;
-
-	// find a free slot in the receive buffer
-	int freeRxSlot = -1;
-
-	for(int i = 0; i < kCANRxBufferSize; i++) {
-		// is this slot free?
-		if(!gState.rxBuffer[i].valid) {
-			// yup, copy index and leave
-			freeRxSlot = i;
-			break;
-		}
-	}
-
-	// if no free slot was found, return. we will probably loose this message
-	if(freeRxSlot == -1) {
-//		LOG_PUTS("no receive buffers free, discarding message");
-		return;
-	}
-
-	// get the identifier of the message
-	can_message_t *msg = &gState.rxBuffer[freeRxSlot];
-
-	msg->valid = 1;
-	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
-	msg->identifier = (CAN->sFIFOMailBox[fifo].RIR & 0xFFFFFFF8) >> 3;
-
-	// copy the data out of the register
-	msg->length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
-
-	uint32_t data;
-
-	// read low word of data
-	data = CAN->sFIFOMailBox[fifo].RDLR;
-
-	msg->data[0] = (uint8_t) ((data & 0x000000FF) >> 0);
-	msg->data[1] = (uint8_t) ((data & 0x0000FF00) >> 8);
-	msg->data[2] = (uint8_t) ((data & 0x00FF0000) >> 16);
-	msg->data[3] = (uint8_t) ((data & 0xFF000000) >> 24);
-
-	// read high word of data
-	data = CAN->sFIFOMailBox[fifo].RDHR;
-
-	msg->data[4] = (uint8_t) ((data & 0x000000FF) >> 0);
-	msg->data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
-	msg->data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
-	msg->data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
-
-	// release message from the FIFO
-	if(fifo == 0) {
-		CAN->RF0R |= CAN_RF0R_RFOM0;
-
-		// wait for the mailbox to be released
-		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
-	} else if(fifo == 1) {
-		CAN->RF1R |= CAN_RF1R_RFOM1;
-
-		// wait for the mailbox to be released
-		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
-	}
-
-	LOG("received to slot %u\n", freeRxSlot);
-
-	// notify any waiting tasks
-	ok = xSemaphoreGive(gState.rxSemaphore);
-
-	if(ok != pdTRUE) {
-		LOG("xSemaphoreGive: %d\n", ok);
-	}
-}
-
-/**
- * Checks whether the receive FIFOs were overrun.
- */
-void can_check_fifo_overrun(void) {
-	// was FIFO0 overrun?
-	if(CAN->RF0R & CAN_RF0R_FOVR0) {
-		gState.numDroppedMessages++;
-
-		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
-	}
-	// Was FIFO1 overrun?
-	if(CAN->RF1R & CAN_RF1R_FOVR1) {
-		gState.numDroppedMessages++;
-
-		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
-	}
-}
-
-
-
-/**
  * CAN IRQ handler
  */
 void CEC_CAN_IRQHandler(void) {
@@ -539,24 +392,111 @@ void CEC_CAN_IRQHandler(void) {
 			ok = xTaskNotifyFromISR(gState.task, 0x01, eSetBits, &higherPriorityWoken);
 		}
 
-		// notify task if there are pending frames in the FIFO
+		// do we have any pending messages in the FIFOs? repeat while we do
 		uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
 		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
 
-		// notify task if any frames in FIFO0 are pending
-		if(fifo0_pending) {
-			ok = xTaskNotifyFromISR(gState.task, 0x02, eSetBits, &higherPriorityWoken);
+		while(fifo0_pending || fifo1_pending) {
+			// is there any pending messages in FIFO 0?
+			if(fifo0_pending) {
+				higherPriorityWoken = can_isr_read_fifo(0) ? pdTRUE : pdFALSE;
+			}
+			// are there any pending messages in FIFO 1?
+			if(fifo1_pending) {
+				higherPriorityWoken = can_isr_read_fifo(1) ? pdTRUE : pdFALSE;
+			}
 
-			// mask IRQs
-			CAN->IER &= ~(CAN_IER_FFIE0 | CAN_IER_FMPIE0);
-		}
+			// check for overruns
+			can_isr_check_fifo_overrun();
 
-		// notify task if any frames in FIFO1 are pending
-		if(fifo1_pending) {
-			ok = xTaskNotifyFromISR(gState.task, 0x04, eSetBits, &higherPriorityWoken);
+			// re-check fifo status
+			fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
+			fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
 		}
 	}
 
 	// force a context switch if needed
     portYIELD_FROM_ISR(higherPriorityWoken);
+}
+
+/**
+ * Reads a message from the specified FIFO.
+ *
+ * @note This function MAY be called from an ISR.
+ *
+ * @return Whether a higher priority task was woken.
+ */
+bool can_isr_read_fifo(int fifo) {
+	BaseType_t ok;
+
+	// get the identifier of the message
+	can_message_t msg;
+	memset(&msg, 0, sizeof(msg));
+
+	msg.valid = 1;
+	msg.rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
+	msg.identifier = (CAN->sFIFOMailBox[fifo].RIR & 0xFFFFFFF8) >> 3;
+
+	// copy the data out of the register
+	msg.length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
+
+	uint32_t data;
+
+	// read low word of data
+	data = CAN->sFIFOMailBox[fifo].RDLR;
+
+	msg.data[0] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg.data[1] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg.data[2] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg.data[3] = (uint8_t) ((data & 0xFF000000) >> 24);
+
+	// read high word of data
+	data = CAN->sFIFOMailBox[fifo].RDHR;
+
+	msg.data[4] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg.data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg.data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg.data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
+
+	// release message from the FIFO
+	if(fifo == 0) {
+		CAN->RF0R |= CAN_RF0R_RFOM0;
+
+		// wait for the mailbox to be released
+		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
+	} else if(fifo == 1) {
+		CAN->RF1R |= CAN_RF1R_RFOM1;
+
+		// wait for the mailbox to be released
+		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+	}
+
+	// send message to queue
+	BaseType_t wokeHigherPriority;
+
+	ok = xQueueSendFromISR(gState.rxQueue, &msg, &wokeHigherPriority);
+
+	if(ok != pdTRUE) {
+		LOG("xQueueSendFromISR: %d\n", ok);
+	}
+
+	return (wokeHigherPriority == pdTRUE);
+}
+
+/**
+ * Checks whether the receive FIFOs were overrun.
+ */
+void can_isr_check_fifo_overrun(void) {
+	// was FIFO0 overrun?
+	if(CAN->RF0R & CAN_RF0R_FOVR0) {
+		gState.numDroppedMessages++;
+
+		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
+	}
+	// Was FIFO1 overrun?
+	if(CAN->RF1R & CAN_RF1R_FOVR1) {
+		gState.numDroppedMessages++;
+
+		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
+	}
 }

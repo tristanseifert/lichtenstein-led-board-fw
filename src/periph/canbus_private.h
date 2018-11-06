@@ -15,6 +15,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "queue.h"
+
+#include <stdbool.h>
 
 /// size of the RX buffer
 #define kCANRxBufferSize			8
@@ -26,7 +29,11 @@
  */
 typedef struct {
 	/// receive buffer
-	can_message_t rxBuffer[kCANRxBufferSize];
+	can_message_t rxQueueBuffer[kCANRxBufferSize];
+	/// receive queue struct
+	StaticQueue_t rxQueueStruct;
+	/// receive queue handle
+	QueueHandle_t rxQueue;
 
 	/// number of dropped messages
 	unsigned int numDroppedMessages;
@@ -37,11 +44,6 @@ typedef struct {
 	StaticTask_t taskTCB;
 	/// stack for task
 	StackType_t taskStack[kCANStackSize];
-
-	/// receive buffer semaphore, used to block until frames receive
-	SemaphoreHandle_t rxSemaphore;
-	/// receive buffer semaphore struct
-	StaticSemaphore_t rxSemaphoreStruct;
 } can_state_t;
 
 /**
@@ -62,13 +64,17 @@ void CEC_CAN_IRQHandler(void);
 
 /**
  * Reads a message from the specified FIFO.
+ *
+ * @note This function MAY be called from an ISR.
+ *
+ * @return Whether a higher priority task was woken.
  */
-void can_read_fifo(int fifo);
+bool can_isr_read_fifo(int fifo);
 
 /**
  * Checks whether the receive FIFOs were overrun.
  */
-void can_check_fifo_overrun(void);
+void can_isr_check_fifo_overrun(void);
 
 
 
