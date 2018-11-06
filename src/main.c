@@ -82,6 +82,9 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
 	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 
+	// start FreeRTOS scheduler. this should not return
+	vTaskStartScheduler();
+
 	// enter main loop. status1 toggles when we're busy
 	while(1) {
 		status_set(kStatusLED1, true);
