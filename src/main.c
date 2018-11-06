@@ -19,6 +19,9 @@
 
 #include "lichtenstein_app/cannabus_init.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "gitcommit.h"
 
 /**
