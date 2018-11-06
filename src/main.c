@@ -58,8 +58,6 @@ static void init_hardware(void) {
  * Application entry point
  */
 int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
-	int err;
-
 	// initialize trace
 	trace_initialize();
 	LOG("lichtenstein-led-fw %s\n", GIT_INFO);
@@ -87,24 +85,6 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// start FreeRTOS scheduler. this should not return
 	vTaskStartScheduler();
-
-	// enter main loop. status1 toggles when we're busy
-	while(1) {
-		status_set(kStatusLED1, true);
-
-		// process waiting CANnabus messages
-		err = cannabus_process();
-
-		if(err < 0) {
-			LOG("cannabus_process failed: %d", err);
-		}
-
-		// clear the busy indicator
-		status_set(kStatusLED1, false);
-
-		// wait for an interrupt
-		__WFI();
-	}
 
 	// never should get here
 	return 0;

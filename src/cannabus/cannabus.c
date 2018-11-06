@@ -29,6 +29,14 @@ int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t
 	memset(&gState, 0, sizeof(gState));
 	memcpy(&gState.callbacks, callbacks, sizeof(cannabus_callbacks_t));
 
+	// create the task
+	gState.task = xTaskCreateStatic(cannabus_task, "CNBS",
+			kCANnabusTaskStackSize, NULL, 1, &gState.taskStack, &gState.taskTCB);
+
+	if(gState.task == NULL) {
+		return kErrTaskCreationFailed;
+	}
+
 	// set filter for the broadcast address
 	err = gState.callbacks.can_config_filter(1, 0x07FFF800, (0xFFFF << 11));
 
@@ -75,53 +83,47 @@ int cannabus_set_address(cannabus_addr_t addr) {
 
 
 /**
- * Gets any waiting messages from the CAN bus driver and processes them.
- *
- * @returns A negative error code, or the number of messages processed.
+ * CANnabus task entry point
  */
-int cannabus_process(void) {
-	int err, messages = 0;
+void cannabus_task(void *ctx __attribute__((unused))) {
+	int err;
 
-	// continue as long as we have messages waiting
-	while(gState.callbacks.can_rx_waiting()) {
-		cannabus_can_frame_t frame;
-		cannabus_operation_t op;
+	while(1) {
+		// continue as long as we have messages waiting
+		while(gState.callbacks.can_rx_waiting()) {
+			cannabus_can_frame_t frame;
+			cannabus_operation_t op;
 
-		// dequeue a message
-		err = gState.callbacks.can_rx_message(&frame);
+			// dequeue a message
+			err = gState.callbacks.can_rx_message(&frame);
 
-		if(err < kErrSuccess) {
-			return err;
-		} else {
-			gState.rxFrames++;
+			if(err < kErrSuccess) {
+				LOG("can_rx_message: %d\n", err);
+			} else {
+				gState.rxFrames++;
+			}
+
+			// convert this message into a CANnabus operation
+			err = cannabus_conv_frame_to_op(&frame, &op);
+
+			if(err < kErrSuccess) {
+				LOG("cannabus_conv_frame_to_op: %d\n", err);
+			}
+
+			// handle the message internally if possible
+			if(cannabus_is_op_internal(&op)) {
+				err = cannabus_internal_op(&op);
+			}
+			// otherwise, call into application code
+			else {
+				err = gState.callbacks.handle_operation(&op);
+			}
+
+			if(err < kErrSuccess) {
+				LOG("handle_operation failed: %d\n", err);
+			}
 		}
-
-		// convert this message into a CANnabus operation
-		err = cannabus_conv_frame_to_op(&frame, &op);
-
-		if(err < kErrSuccess) {
-			return err;
-		}
-
-		// handle the message internally if possible
-		if(cannabus_is_op_internal(&op)) {
-			err = cannabus_internal_op(&op);
-		}
-		// otherwise, call into application code
-		else {
-			err = gState.callbacks.handle_operation(&op);
-		}
-
-		if(err < kErrSuccess) {
-			return err;
-		}
-
-		// increment the counter
-		messages++;
 	}
-
-	// return number of processed messages
-	return messages;
 }
 
 

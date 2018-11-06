@@ -15,6 +15,8 @@ enum {
 
 	// generic errors
 	kErrInvalidArgs				= -1000,
+	kErrInsufficientResources	= -1001,
+	kErrTaskCreationFailed		= -1002,
 
 };
 

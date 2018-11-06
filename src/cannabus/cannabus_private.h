@@ -12,7 +12,13 @@
 
 #include "cannabus.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include <stdbool.h>
+
+/// stack size for CANnabus driver
+#define kCANnabusTaskStackSize	100
 
 /**
  * Internal state for the CANnabus driver.
@@ -31,7 +37,21 @@ typedef struct {
 
 	/// callbacks in user code to handle CAN bus interfacing
 	cannabus_callbacks_t callbacks;
+
+	/// FreeRTOS task handle
+	TaskHandle_t task;
+	/// task control block
+	StaticTask_t taskTCB;
+	/// stack for task
+	StackType_t taskStack[kCANnabusTaskStackSize];
 } cannabus_state_t;
+
+
+
+/**
+ * CANnabus task entry point
+ */
+void cannabus_task(void *ctx);
 
 
 
