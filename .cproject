@@ -1246,6 +1246,8 @@
             <resource resourceType="PROJECT" workspacePath="/lichtenstein-led-board"/>
             		
         </configuration>
+        		
+        <configuration configurationName="Debug-STM32F072"/>
         	
     </storageModule>
     	

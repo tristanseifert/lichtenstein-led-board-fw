@@ -65,7 +65,6 @@ void status_set(status_led_t led, bool on) {
 		}
 		break;
 	}
-	}
 #endif
 #ifdef STM32F072
 	switch(led) {
