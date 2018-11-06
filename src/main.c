@@ -33,6 +33,7 @@
 
 #include "lichtenstein.h"
 
+#include "hw/status.h"
 #include "hw/output_mux.h"
 #include "hw/differential_rx.h"
 #include "hw/ws2811_generator.h"
@@ -55,6 +56,7 @@
 static void init_hardware(void) {
 #ifdef STM32F042
 	// first, initialize the hardware
+	status_init();
 	mux_init();
 	diffrx_init();
 	ws2811_init();
@@ -68,6 +70,7 @@ static void init_hardware(void) {
 #endif
 #ifdef STM32F072
 	// first, initialize the hardware
+	status_init();
 	mux_init();
 	diffrx_init();
 //	ws2811_init();
@@ -220,14 +223,19 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
 	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 
-	// enter main loop
+	// enter main loop. status1 toggles when we're busy
 	while(1) {
+		status_set(kStatusLED1, true);
+
 		// process waiting CANnabus messages
 		err = cannabus_process();
 
 		if(err < 0) {
 			LOG("cannabus_process failed: %d", err);
 		}
+
+		// clear the busy indicator
+		status_set(kStatusLED1, false);
 
 		// wait for an interrupt
 		__WFI();

@@ -22,6 +22,8 @@ static diffrx_state_t gLastState = kDiffRxDisabled;
 void diffrx_init(void) {
 	// enable GPIO clock and configure as output
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+
+	GPIOA->MODER &= (uint32_t) ~(GPIO_MODER_MODER7_0 | GPIO_MODER_MODER7_1);
 	GPIOA->MODER |= GPIO_MODER_MODER7_0;
 
 	// set the last receiver state (or default if first reset)
