@@ -38,7 +38,7 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
 		}
 		// set differential driver state (reg = 0x012)
 		else if(op->reg == 0x012) {
-			return lichtenstein_canbus_diffrxctrl(op);
+			return lichtenstein_cannabus_diffrxctrl(op);
 		}
 	}
 
@@ -136,7 +136,7 @@ int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op) {
 /**
  * Handles a write to the differential receiver control register. (Reg 0x012)
  */
-int lichtenstein_canbus_diffrxctrl(cannabus_operation_t *op) {
+int lichtenstein_cannabus_diffrxctrl(cannabus_operation_t *op) {
 	// we must get a single byte of data
 	if(op->data_len != 1) {
 		return kErrCannabusInvalidFrameSize;

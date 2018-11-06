@@ -29,10 +29,12 @@
  */
 #define kRxBufferSize	8
 
-static can_message_t rxBuffer[kRxBufferSize];
+static can_message_t gCANRxBuffer[kRxBufferSize];
 
 /// set when a message is received yet the queue is full
-bool droppedMessages = false;
+static bool gDroppedMessages = false;
+/// number of dropped messages
+static unsigned int gNumDroppedMessages = 0;
 
 
 /**
@@ -40,7 +42,7 @@ bool droppedMessages = false;
  */
 void can_init(void) {
 	// clear the receive buffer
-	memset(&rxBuffer, 0, sizeof(rxBuffer));
+	memset(&gCANRxBuffer, 0, sizeof(gCANRxBuffer));
 
 #ifdef STM32F042
 	// enable GPIO, SYSCFG clocks, then remap PA11/PA12 to the pins
@@ -90,10 +92,9 @@ void can_init(void) {
 	 * - Automatic bus-off management
 	 * - Automatic wake-up mode
 	 * - Discard messages if FIFO is full
-	 * - No automatic retransmissions
 	 *
 	 */
-	CAN->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM/* | CAN_MCR_RFLM *//*| CAN_MCR_NART*/;
+	CAN->MCR |= CAN_MCR_ABOM | CAN_MCR_AWUM | CAN_MCR_RFLM /*| CAN_MCR_NART*/;
 
 	/**
 	 * Enable CAN interrupts:
@@ -202,7 +203,7 @@ bool can_messages_available(void) {
 	// check the entire receive queue
 	for(int i = 0; i < kRxBufferSize; i++) {
 		// is this message valid?
-		if(rxBuffer[i].valid) {
+		if(gCANRxBuffer[i].valid) {
 			// then yes, there are messages waiting
 			return true;
 		}
@@ -217,8 +218,8 @@ bool can_messages_available(void) {
  */
 bool can_messages_dropped(void) {
 	// get state and reset it
-	bool state = droppedMessages;
-	droppedMessages = false;
+	bool state = gDroppedMessages;
+	gDroppedMessages = false;
 
 	return state;
 }
@@ -236,13 +237,13 @@ int can_get_last_message(can_message_t *msg) {
 	// find an available message
 	for(int i = 0; i < kRxBufferSize; i++) {
 		// is this message valid?
-		if(rxBuffer[i].valid) {
+		if(gCANRxBuffer[i].valid) {
 			// copy message
-			memcpy(msg, &rxBuffer[i], sizeof(can_message_t));
+			memcpy(msg, &gCANRxBuffer[i], sizeof(can_message_t));
 
 			// mark that slot as available, return index of message
 //			rxBuffer[i].valid = 0;
-			memset(&rxBuffer[i], 0, sizeof(can_message_t));
+			memset(&gCANRxBuffer[i], 0, sizeof(can_message_t));
 
 			return i;
 		}
@@ -336,10 +337,12 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 	// copy low byte of data
 	uint32_t data;
 
-	data = (msg->data[3] << 24) | (msg->data[2] << 16) | (msg->data[1] << 8) | (msg->data[0] << 0);
+	data = (uint32_t) ((msg->data[3] << 24) | (msg->data[2] << 16) |
+			(msg->data[1] << 8) | (msg->data[0] << 0));
 	CAN->sTxMailBox[mailbox].TDLR = data;
 
-	data = (msg->data[7] << 24) | (msg->data[6] << 16) | (msg->data[5] << 8) | (msg->data[4] << 0);
+	data = (uint32_t) ((msg->data[7] << 24) | (msg->data[6] << 16) |
+			(msg->data[5] << 8) | (msg->data[4] << 0));
 	CAN->sTxMailBox[mailbox].TDHR = data;
 
 	// request transmission of mailbox 0, and wait for request acknowledgement
@@ -406,7 +409,7 @@ void can_read_fifo(int fifo) {
 
 	for(int i = 0; i < kRxBufferSize; i++) {
 		// is this slot free?
-		if(!rxBuffer[i].valid) {
+		if(!gCANRxBuffer[i].valid) {
 			// yup, copy index and leave
 			freeRxSlot = i;
 			break;
@@ -420,7 +423,7 @@ void can_read_fifo(int fifo) {
 	}
 
 	// get the identifier of the message
-	can_message_t *msg = &rxBuffer[freeRxSlot];
+	can_message_t *msg = &gCANRxBuffer[freeRxSlot];
 
 	msg->valid = 1;
 	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
@@ -459,12 +462,6 @@ void can_read_fifo(int fifo) {
 		// wait for the mailbox to be released
 //		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
 	}
-
-	// log
-	/*LOG("received to slot %u: id %x, len %u, %x %x\n", freeRxSlot,
-			msg->identifier, msg->length,
-			CAN->sFIFOMailBox[fifo].RDLR,
-			CAN->sFIFOMailBox[fifo].RDHR);*/
 }
 
 /**
@@ -473,13 +470,15 @@ void can_read_fifo(int fifo) {
 void can_check_fifo_overrun(void) {
 	// was FIFO0 overrun?
 	if(CAN->RF0R & CAN_RF0R_FOVR0) {
-		droppedMessages = true;
+		gDroppedMessages = true;
+		gNumDroppedMessages++;
 
 		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
 	}
 	// Was FIFO1 overrun?
 	if(CAN->RF1R & CAN_RF1R_FOVR1) {
-		droppedMessages = true;
+		gDroppedMessages = true;
+		gNumDroppedMessages++;
 
 		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
 	}

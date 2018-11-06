@@ -23,6 +23,6 @@ int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op);
 /**
  * Handles a write to the differential receiver control register. (Reg 0x012)
  */
-int lichtenstein_canbus_diffrxctrl(cannabus_operation_t *op);
+int lichtenstein_cannabus_diffrxctrl(cannabus_operation_t *op);
 
 #endif /* LICHTENSTEIN_APP_CANNABUS_LICHTENSTEIN_PRIVATE_H_ */
