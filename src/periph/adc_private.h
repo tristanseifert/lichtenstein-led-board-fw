@@ -12,20 +12,14 @@
  * Internal ADC state
  */
 typedef struct {
-	/// conversion counter
-	int conversions;
-	/// total number of conversions
-	int numConversions;
-
 	/// last measurement value
 	unsigned int lastMeasure[4];
 } adc_state_t;
 
 
-
 /**
- * Reads a single conversion out of the ADC.
+ * Waits for the current ADC conversion to complete.
  */
-void adc_read_data(void);
+int adc_wait_end_conversion(void);
 
 #endif /* PERIPH_ADC_PRIVATE_H_ */

@@ -71,7 +71,7 @@ static void init_hardware(void) {
 	mux_init();
 	diffrx_init();
 //	ws2811_init();
-//	spi_init();
+	spi_init();
 	can_init();
 	adc_init();
 
@@ -222,9 +222,6 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 
 	// enter main loop
 	while(1) {
-		// take a measurement of the ADC inputs
-//		adc_measure_begin();
-
 		// process waiting CANnabus messages
 		err = cannabus_process();
 
@@ -232,11 +229,8 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 			LOG("cannabus_process failed: %d", err);
 		}
 
-		// wait
-//		for(volatile int i = 0; i < 800000; i++) {}
-
 		// wait for an interrupt
-//		__WFI();
+		__WFI();
 	}
 
 	// never should get here

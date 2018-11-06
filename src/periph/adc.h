@@ -16,6 +16,15 @@
 #include <stdint.h>
 
 /**
+ * ADC related errors
+ */
+enum {
+	/// An ADC conversion timed out
+	kErrADCConversionTimedOut		= -3000
+};
+
+
+/**
  * Initializes the ADC.
  */
 void adc_init(void);
@@ -23,7 +32,7 @@ void adc_init(void);
 /**
  * Kicks off a measurement in the background.
  */
-void adc_measure_begin(void);
+int adc_measure(void);
 
 /**
  * Copies the measurement for the four channels.

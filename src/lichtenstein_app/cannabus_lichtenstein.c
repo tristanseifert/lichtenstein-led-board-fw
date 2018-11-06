@@ -53,13 +53,22 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
  * Gets ADC data, converts it, and sends it. (Reg 0x010)
  */
 int lichtenstein_cannabus_adc(void) {
+	int err;
 	uint32_t temp;
+
+	// do an ADC measurement
+	err = adc_measure();
+
+	if(err < kErrSuccess) {
+		LOG("adc_measure failed: %d\n", err);
+		return err;
+	}
 
 	// get ADC data
 	unsigned int adcData[4];
 	adc_get_measure(&adcData);
 
-	LOG("V = %u, I = %u, temp = %u, ref = %u", adcData[0], adcData[1], adcData[2], adcData[3]);
+	LOG("V = %u, I = %u, temp = %u, ref = %u\n", adcData[0], adcData[1], adcData[2], adcData[3]);
 
 	// convert to 16 bit quantities
 	uint16_t convertedData[4];
@@ -67,18 +76,18 @@ int lichtenstein_cannabus_adc(void) {
 
 	// convert voltage: it's 1/2 of the input voltage
 	temp = adc_normalize_value(adcData[0]);
-	convertedData[0] = (uint16_t) temp;
+	convertedData[0] = __builtin_bswap16((uint16_t) temp);
 
 	// convert current:
 	temp = adc_normalize_value(adcData[1]);
-	convertedData[1] = (uint16_t) temp;
+	convertedData[1] = __builtin_bswap16((uint16_t) temp);
 
 	// convert temperature
 	temp = adc_normalize_value(adcData[2]);
-	convertedData[2] = (uint16_t) temp;
+	convertedData[2] = __builtin_bswap16((uint16_t) temp);
 
 	// send raw vRef value
-	convertedData[3] = (uint16_t) adcData[3];
+	convertedData[3] = __builtin_bswap16((uint16_t) adcData[3]);
 
 	// send response
 	cannabus_operation_t op;
