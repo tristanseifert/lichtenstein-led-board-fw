@@ -16,7 +16,10 @@ enum {
 	// generic errors
 	kErrInvalidArgs				= -1000,
 	kErrInsufficientResources	= -1001,
+	/// could not create a task (xTaskCreate* returned NULL)
 	kErrTaskCreationFailed		= -1002,
+	/// could not create a semaphore (xSemaphoreCreate* returned NULL)
+	kErrSemaphoreCreationFailed	= -1003,
 
 };
 

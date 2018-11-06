@@ -57,7 +57,7 @@ extern uint32_t SystemCoreClock;
 #define configMAX_PRIORITIES			(5)
 #define configMINIMAL_STACK_SIZE		((unsigned short) 60)
 
-#define configMAX_TASK_NAME_LEN			4
+#define configMAX_TASK_NAME_LEN			10
 
 // idle task
 #define configIDLE_SHOULD_YIELD			1

@@ -12,6 +12,47 @@
 
 #include "canbus.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+/// size of the RX buffer
+#define kCANRxBufferSize			8
+/// size of the CAN bus driver stack (words)
+#define kCANStackSize				100
+
+/**
+ * Internal state of the CAN bus driver
+ */
+typedef struct {
+	/// receive buffer
+	can_message_t rxBuffer[kCANRxBufferSize];
+
+	/// number of dropped messages
+	unsigned int numDroppedMessages;
+
+	/// FreeRTOS task handle
+	TaskHandle_t task;
+	/// task control block
+	StaticTask_t taskTCB;
+	/// stack for task
+	StackType_t taskStack[kCANStackSize];
+
+	/// receive buffer semaphore, used to block until frames receive
+	SemaphoreHandle_t rxSemaphore;
+	/// receive buffer semaphore struct
+	StaticSemaphore_t rxSemaphoreStruct;
+} can_state_t;
+
+/**
+ * Entry point for the CAN bus task.
+ *
+ * This task primarily handles receiving frames.
+ */
+void can_task(void);
+
+
+
 /**
  * Declare prototype for the IRQ
  */

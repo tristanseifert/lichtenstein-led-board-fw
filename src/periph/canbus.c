@@ -24,25 +24,32 @@
 #include <stddef.h>
 #include <string.h>
 
-/**
- * Queue of received messages
- */
-#define kRxBufferSize	8
-
-static can_message_t gCANRxBuffer[kRxBufferSize];
-
-/// set when a message is received yet the queue is full
-static bool gDroppedMessages = false;
-/// number of dropped messages
-static unsigned int gNumDroppedMessages = 0;
+/// internal state
+static can_state_t gState;
 
 
 /**
  * Initializes the CAN peripheral.
  */
-void can_init(void) {
-	// clear the receive buffer
-	memset(&gCANRxBuffer, 0, sizeof(gCANRxBuffer));
+int can_init(void) {
+	// clear state
+	memset(&gState, 0, sizeof(gState));
+
+	// create rx buffer semaphore
+	gState.rxSemaphore = xSemaphoreCreateCountingStatic(kCANRxBufferSize, 0,
+			&gState.rxSemaphoreStruct);
+
+	if(gState.rxSemaphore == NULL) {
+		return kErrSemaphoreCreationFailed;
+	}
+
+	// create the task
+	gState.task = xTaskCreateStatic(can_task, "CAN",
+			kCANStackSize, NULL, 2, &gState.taskStack, &gState.taskTCB);
+
+	if(gState.task == NULL) {
+		return kErrTaskCreationFailed;
+	}
 
 #ifdef STM32F042
 	// enable GPIO, SYSCFG clocks, then remap PA11/PA12 to the pins
@@ -113,6 +120,9 @@ void can_init(void) {
 
 	// configure CAN bit timing for 125kbps nominal
 	CAN->BTR = 0x001c0017;
+
+	// success
+	return kErrSuccess;
 }
 
 /**
@@ -196,14 +206,71 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
 }
 
 
+
+/**
+ * Entry point for the CAN bus task.
+ *
+ * This task is woken up by various events being sent to it from ISRs or other
+ * locations. The FreeRTOS notification field is used for this:
+ *
+ * - Bit 0: CAN error
+ * - Bit 1: CAN frame received (FIFO 0)
+ * - Bit 2: CAN frame received (FIFO 1)
+ */
+void can_task(void) {
+	BaseType_t ok;
+	uint32_t notification;
+
+	while(1) {
+		// wait for events
+		ok = xTaskNotifyWait(0, 0x07, &notification, portMAX_DELAY);
+
+		if(ok != pdTRUE) {
+			LOG("xTaskNotifyWait: %d\n", ok);
+		}
+
+		// was a CAN error detected?
+		if(notification & 0x01) {
+			LOG("CAN error: %x\n", CAN->ESR);
+		}
+		// was a frame received on FIFO 0?
+		if(notification & 0x02) {
+			uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
+
+			while(fifo0_pending) {
+				can_read_fifo(0);
+			}
+
+		}
+		// was a frame received on FIFO 1?
+		if(notification & 0x04) {
+			uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
+
+			while(fifo1_pending) {
+				can_read_fifo(1);
+			}
+		}
+
+		// check for FIFO overruns if either of the FIFOs were pending
+		if(notification & 0x06) {
+			can_check_fifo_overrun();
+
+			// also, re-enable IRQs
+			CAN->IER |= CAN_IER_FFIE0 | CAN_IER_FMPIE0;
+		}
+	}
+}
+
+
+
 /**
  * Are there any messages waiting to be read?
  */
 bool can_messages_available(void) {
 	// check the entire receive queue
-	for(int i = 0; i < kRxBufferSize; i++) {
+	for(int i = 0; i < kCANRxBufferSize; i++) {
 		// is this message valid?
-		if(gCANRxBuffer[i].valid) {
+		if(gState.rxBuffer[i].valid) {
 			// then yes, there are messages waiting
 			return true;
 		}
@@ -214,36 +281,36 @@ bool can_messages_available(void) {
 }
 
 /**
- * Were messages dropped since the last invocation of this function?
- */
-bool can_messages_dropped(void) {
-	// get state and reset it
-	bool state = gDroppedMessages;
-	gDroppedMessages = false;
-
-	return state;
-}
-
-/**
  * Copies the oldest message to the specified buffer, then removes it from the
  * internal queue.
+ *
+ * This function blocks the calling task until a frame is available.
  */
 int can_get_last_message(can_message_t *msg) {
+	BaseType_t ok;
+
 	// buffer cannot be null
 	if(msg == NULL) {
 		return kErrInvalidArgs;
 	}
 
+	// attempt to 'take' the RX semaphore
+	ok = xSemaphoreTake(gState.rxSemaphore, portMAX_DELAY);
+
+	if(ok != pdTRUE) {
+		LOG("xSemaphoreTake: %d\n", ok);
+		return kErrCanNoRxFramesPending;
+	}
+
 	// find an available message
-	for(int i = 0; i < kRxBufferSize; i++) {
+	for(int i = 0; i < kCANRxBufferSize; i++) {
 		// is this message valid?
-		if(gCANRxBuffer[i].valid) {
+		if(gState.rxBuffer[i].valid) {
 			// copy message
-			memcpy(msg, &gCANRxBuffer[i], sizeof(can_message_t));
+			memcpy(msg, &gState.rxBuffer[i], sizeof(can_message_t));
 
 			// mark that slot as available, return index of message
-//			rxBuffer[i].valid = 0;
-			memset(&gCANRxBuffer[i], 0, sizeof(can_message_t));
+			memset(&gState.rxBuffer[i], 0, sizeof(can_message_t));
 
 			return i;
 		}
@@ -358,58 +425,17 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 
 
 /**
- * CAN IRQ handler
- */
-void CEC_CAN_IRQHandler(void) {
-	// was this a CAN IRQ?
-//	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
-	if(1) {
-		uint32_t masterIrq = CAN->MSR;
-
-		// is this an error interrupt?
-		if(masterIrq & CAN_MSR_ERRI) {
-			// TODO: handle error interrupts
-			LOG("CAN error: %x\n", CAN->ESR);
-
-			// acknowledge error interrupt
-			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
-		}
-
-		// do we have any pending messages in the FIFOs? repeat while we do
-		uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
-		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
-
-		while(fifo0_pending || fifo1_pending) {
-//		if(fifo0_pending || fifo1_pending) {
-			// is there any pending messages in FIFO 0?
-			if(fifo0_pending) {
-				can_read_fifo(0);
-			}
-			// are there any pending messages in FIFO 1?
-			if(fifo1_pending) {
-				can_read_fifo(1);
-			}
-
-			// check for overruns
-			can_check_fifo_overrun();
-
-			// re-check fifo status
-			fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
-			fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
-		}
-	}
-}
-
-/**
  * Reads a message from the specified FIFO.
  */
 void can_read_fifo(int fifo) {
+	BaseType_t ok;
+
 	// find a free slot in the receive buffer
 	int freeRxSlot = -1;
 
-	for(int i = 0; i < kRxBufferSize; i++) {
+	for(int i = 0; i < kCANRxBufferSize; i++) {
 		// is this slot free?
-		if(!gCANRxBuffer[i].valid) {
+		if(!gState.rxBuffer[i].valid) {
 			// yup, copy index and leave
 			freeRxSlot = i;
 			break;
@@ -418,12 +444,12 @@ void can_read_fifo(int fifo) {
 
 	// if no free slot was found, return. we will probably loose this message
 	if(freeRxSlot == -1) {
-		LOG_PUTS("discarded CAN message");
+//		LOG_PUTS("no receive buffers free, discarding message");
 		return;
 	}
 
 	// get the identifier of the message
-	can_message_t *msg = &gCANRxBuffer[freeRxSlot];
+	can_message_t *msg = &gState.rxBuffer[freeRxSlot];
 
 	msg->valid = 1;
 	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
@@ -455,12 +481,21 @@ void can_read_fifo(int fifo) {
 		CAN->RF0R |= CAN_RF0R_RFOM0;
 
 		// wait for the mailbox to be released
-//		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
+		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
 	} else if(fifo == 1) {
 		CAN->RF1R |= CAN_RF1R_RFOM1;
 
 		// wait for the mailbox to be released
-//		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+	}
+
+	LOG("received to slot %u\n", freeRxSlot);
+
+	// notify any waiting tasks
+	ok = xSemaphoreGive(gState.rxSemaphore);
+
+	if(ok != pdTRUE) {
+		LOG("xSemaphoreGive: %d\n", ok);
 	}
 }
 
@@ -470,16 +505,58 @@ void can_read_fifo(int fifo) {
 void can_check_fifo_overrun(void) {
 	// was FIFO0 overrun?
 	if(CAN->RF0R & CAN_RF0R_FOVR0) {
-		gDroppedMessages = true;
-		gNumDroppedMessages++;
+		gState.numDroppedMessages++;
 
 		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
 	}
 	// Was FIFO1 overrun?
 	if(CAN->RF1R & CAN_RF1R_FOVR1) {
-		gDroppedMessages = true;
-		gNumDroppedMessages++;
+		gState.numDroppedMessages++;
 
 		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
 	}
+}
+
+
+
+/**
+ * CAN IRQ handler
+ */
+void CEC_CAN_IRQHandler(void) {
+	BaseType_t higherPriorityWoken = pdFALSE, ok;
+
+	// was this a CAN IRQ?
+//	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
+	if(1) {
+		uint32_t masterIrq = CAN->MSR;
+
+		// is this an error interrupt?
+		if(masterIrq & CAN_MSR_ERRI) {
+			// acknowledge error interrupt
+			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
+
+			// notify task
+			ok = xTaskNotifyFromISR(gState.task, 0x01, eSetBits, &higherPriorityWoken);
+		}
+
+		// notify task if there are pending frames in the FIFO
+		uint32_t fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
+		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
+
+		// notify task if any frames in FIFO0 are pending
+		if(fifo0_pending) {
+			ok = xTaskNotifyFromISR(gState.task, 0x02, eSetBits, &higherPriorityWoken);
+
+			// mask IRQs
+			CAN->IER &= ~(CAN_IER_FFIE0 | CAN_IER_FMPIE0);
+		}
+
+		// notify task if any frames in FIFO1 are pending
+		if(fifo1_pending) {
+			ok = xTaskNotifyFromISR(gState.task, 0x04, eSetBits, &higherPriorityWoken);
+		}
+	}
+
+	// force a context switch if needed
+    portYIELD_FROM_ISR(higherPriorityWoken);
 }

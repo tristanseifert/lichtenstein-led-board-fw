@@ -30,7 +30,7 @@ int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t
 	memcpy(&gState.callbacks, callbacks, sizeof(cannabus_callbacks_t));
 
 	// create the task
-	gState.task = xTaskCreateStatic(cannabus_task, "CNBS",
+	gState.task = xTaskCreateStatic(cannabus_task, "CANnabus",
 			kCANnabusTaskStackSize, NULL, 1, &gState.taskStack, &gState.taskTCB);
 
 	if(gState.task == NULL) {
@@ -87,41 +87,37 @@ int cannabus_set_address(cannabus_addr_t addr) {
  */
 void cannabus_task(void *ctx __attribute__((unused))) {
 	int err;
+	cannabus_can_frame_t frame;
+	cannabus_operation_t op;
 
 	while(1) {
-		// continue as long as we have messages waiting
-		while(gState.callbacks.can_rx_waiting()) {
-			cannabus_can_frame_t frame;
-			cannabus_operation_t op;
+		// dequeue a message
+		err = gState.callbacks.can_rx_message(&frame);
 
-			// dequeue a message
-			err = gState.callbacks.can_rx_message(&frame);
+		if(err < kErrSuccess) {
+			LOG("can_rx_message: %d\n", err);
+		} else {
+			gState.rxFrames++;
+		}
 
-			if(err < kErrSuccess) {
-				LOG("can_rx_message: %d\n", err);
-			} else {
-				gState.rxFrames++;
-			}
+		// convert this message into a CANnabus operation
+		err = cannabus_conv_frame_to_op(&frame, &op);
 
-			// convert this message into a CANnabus operation
-			err = cannabus_conv_frame_to_op(&frame, &op);
+		if(err < kErrSuccess) {
+			LOG("cannabus_conv_frame_to_op: %d\n", err);
+		}
 
-			if(err < kErrSuccess) {
-				LOG("cannabus_conv_frame_to_op: %d\n", err);
-			}
+		// handle the message internally if possible
+		if(cannabus_is_op_internal(&op)) {
+			err = cannabus_internal_op(&op);
+		}
+		// otherwise, call into application code
+		else {
+			err = gState.callbacks.handle_operation(&op);
+		}
 
-			// handle the message internally if possible
-			if(cannabus_is_op_internal(&op)) {
-				err = cannabus_internal_op(&op);
-			}
-			// otherwise, call into application code
-			else {
-				err = gState.callbacks.handle_operation(&op);
-			}
-
-			if(err < kErrSuccess) {
-				LOG("handle_operation failed: %d\n", err);
-			}
+		if(err < kErrSuccess) {
+			LOG("handle_operation failed: %d\n", err);
 		}
 	}
 }

@@ -77,7 +77,7 @@ typedef struct {
 	/// sets one of four mask-based CAN identifier filters in the CAN driver
 	int (*can_config_filter)(unsigned int, uint32_t, uint32_t);
 
-	/// check if there are CAN bus messages pending
+	/// check if there are CAN bus messages pending, blocking the task if not
 	bool (*can_rx_waiting)(void);
 	/// retrieve the last CAN message
 	int (*can_rx_message)(cannabus_can_frame_t *);
