@@ -17,7 +17,6 @@ tmp/
 *.swp
 *~.nib
 local.properties
-.settings/
 .loadpath
 .recommenders
 
@@ -29,9 +28,6 @@ local.properties
 
 # PyDev specific (Python IDE for Eclipse)
 *.pydevproject
-
-# CDT-specific (C/C++ Development Tooling)
-.cproject
 
 # CDT- autotools
 .autotools
@@ -66,9 +62,6 @@ local.properties
 .worksheet
 
 ### Eclipse Patch ###
-# Eclipse Core
-.project
-
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
