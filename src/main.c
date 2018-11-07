@@ -19,6 +19,9 @@
 
 #include "lichtenstein_app/cannabus_init.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "gitcommit.h"
 
 /**
@@ -55,17 +58,17 @@ static void init_hardware(void) {
  * Application entry point
  */
 int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
-	int err;
+#ifdef DEBUG
+		// initialize trace
+		trace_initialize();
+		LOG("lichtenstein-led-fw %s\n", GIT_INFO);
 
-	// initialize trace
-	trace_initialize();
-	LOG("lichtenstein-led-fw %s\n", GIT_INFO);
-
-#ifdef STM32F042
-	LOG_PUTS("hw: STM32F042");
-#endif
-#ifdef STM32F072
-	LOG_PUTS("hw: STM32F072");
+	#ifdef STM32F042
+		LOG_PUTS("hw: STM32F042");
+	#endif
+	#ifdef STM32F072
+		LOG_PUTS("hw: STM32F072");
+	#endif
 #endif
 
 	// initialize hardware/peripherals
@@ -82,23 +85,8 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
 	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 
-	// enter main loop. status1 toggles when we're busy
-	while(1) {
-		status_set(kStatusLED1, true);
-
-		// process waiting CANnabus messages
-		err = cannabus_process();
-
-		if(err < 0) {
-			LOG("cannabus_process failed: %d", err);
-		}
-
-		// clear the busy indicator
-		status_set(kStatusLED1, false);
-
-		// wait for an interrupt
-		__WFI();
-	}
+	// start FreeRTOS scheduler. this should not return
+	vTaskStartScheduler();
 
 	// never should get here
 	return 0;

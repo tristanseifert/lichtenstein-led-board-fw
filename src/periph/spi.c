@@ -14,6 +14,9 @@
 
 #include "lichtenstein.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include <stdint.h>
 
 /**
@@ -75,6 +78,8 @@ void spi_init(void) {
  * This configures SPI_MOSI as an alternate function output.
  */
 void spi_begin(void) {
+	taskENTER_CRITICAL();
+
 #ifdef STM32F042
 	// configure MOSI (PA7)
 	GPIOA->MODER |= GPIO_MODER_MODER7_1;
@@ -89,6 +94,8 @@ void spi_begin(void) {
 	// assert /CS and enable SPI
 	SPI1->CR1 &= (uint16_t) ~SPI_CR1_SSI;
 	SPI1->CR1 |= SPI_CR1_SPE;
+
+	taskEXIT_CRITICAL();
 }
 
 /**
@@ -98,12 +105,16 @@ void spi_begin(void) {
  * and is done by just re-initializing that peripheral.
  */
 void spi_end(void) {
+	taskENTER_CRITICAL();
+
 	// de-assert CS and disable SPI
 	SPI1->CR1 |= SPI_CR1_SSI;
 	SPI1->CR1 &= (uint16_t) ~SPI_CR1_SPE;
 
 	// re-initialize differential rx
 	diffrx_init();
+
+	taskEXIT_CRITICAL();
 }
 
 

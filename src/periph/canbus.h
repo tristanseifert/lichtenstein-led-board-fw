@@ -60,7 +60,7 @@ typedef struct {
 /**
  * Initializes the CAN peripheral.
  */
-void can_init(void);
+int can_init(void);
 
 /**
  * Starts the CAN driver.
@@ -99,13 +99,10 @@ int can_filter_mask(unsigned int bank, uint32_t mask, uint32_t identifier);
 bool can_messages_available(void);
 
 /**
- * Were messages dropped since the last invocation of this function?
- */
-bool can_messages_dropped(void);
-
-/**
  * Copies the oldest message to the specified buffer, then removes it from the
  * internal queue.
+ *
+ * This function blocks the calling task until a frame is available.
  */
 int can_get_last_message(can_message_t *msg);
 

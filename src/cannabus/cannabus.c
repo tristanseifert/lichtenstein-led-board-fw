@@ -29,6 +29,14 @@ int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t
 	memset(&gState, 0, sizeof(gState));
 	memcpy(&gState.callbacks, callbacks, sizeof(cannabus_callbacks_t));
 
+	// create the task
+	gState.task = xTaskCreateStatic(cannabus_task, "CANnabus",
+			kCANnabusTaskStackSize, NULL, 1, &gState.taskStack, &gState.taskTCB);
+
+	if(gState.task == NULL) {
+		return kErrTaskCreationFailed;
+	}
+
 	// set filter for the broadcast address
 	err = gState.callbacks.can_config_filter(1, 0x07FFF800, (0xFFFF << 11));
 
@@ -75,23 +83,20 @@ int cannabus_set_address(cannabus_addr_t addr) {
 
 
 /**
- * Gets any waiting messages from the CAN bus driver and processes them.
- *
- * @returns A negative error code, or the number of messages processed.
+ * CANnabus task entry point
  */
-int cannabus_process(void) {
-	int err, messages = 0;
+void cannabus_task(void *ctx __attribute__((unused))) {
+	int err;
+	cannabus_can_frame_t frame;
+	cannabus_operation_t op;
 
-	// continue as long as we have messages waiting
-	while(gState.callbacks.can_rx_waiting()) {
-		cannabus_can_frame_t frame;
-		cannabus_operation_t op;
-
+	while(1) {
 		// dequeue a message
 		err = gState.callbacks.can_rx_message(&frame);
 
 		if(err < kErrSuccess) {
-			return err;
+			LOG("can_rx_message: %d\n", err);
+			continue;
 		} else {
 			gState.rxFrames++;
 		}
@@ -100,7 +105,7 @@ int cannabus_process(void) {
 		err = cannabus_conv_frame_to_op(&frame, &op);
 
 		if(err < kErrSuccess) {
-			return err;
+			LOG("cannabus_conv_frame_to_op: %d\n", err);
 		}
 
 		// handle the message internally if possible
@@ -113,15 +118,9 @@ int cannabus_process(void) {
 		}
 
 		if(err < kErrSuccess) {
-			return err;
+			LOG("handle_operation failed: %d\n", err);
 		}
-
-		// increment the counter
-		messages++;
 	}
-
-	// return number of processed messages
-	return messages;
 }
 
 

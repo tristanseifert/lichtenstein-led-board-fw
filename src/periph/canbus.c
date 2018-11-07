@@ -24,25 +24,41 @@
 #include <stddef.h>
 #include <string.h>
 
-/**
- * Queue of received messages
- */
-#define kRxBufferSize	8
-
-static can_message_t gCANRxBuffer[kRxBufferSize];
-
-/// set when a message is received yet the queue is full
-static bool gDroppedMessages = false;
-/// number of dropped messages
-static unsigned int gNumDroppedMessages = 0;
+/// internal state
+static can_state_t gState;
 
 
 /**
  * Initializes the CAN peripheral.
  */
-void can_init(void) {
-	// clear the receive buffer
-	memset(&gCANRxBuffer, 0, sizeof(gCANRxBuffer));
+int can_init(void) {
+	// clear state
+	memset(&gState, 0, sizeof(gState));
+
+	// create rx queue
+	gState.rxQueue = xQueueCreateStatic(kCANRxBufferSize, sizeof(can_message_t),
+			&gState.rxQueueBuffer, &gState.rxQueueStruct);
+
+	if(gState.rxQueue == NULL) {
+		return kErrQueueCreationFailed;
+	}
+
+	// create task message queue
+	gState.taskMsgQueue = xQueueCreateStatic(kCANMsgBufferSize,
+			sizeof(can_task_msg_t), &gState.taskMsgBuffer,
+			&gState.taskMsgQueueStruct);
+
+	if(gState.taskMsgQueue == NULL) {
+		return kErrQueueCreationFailed;
+	}
+
+	// create the task
+	gState.task = xTaskCreateStatic(can_task, "CAN",
+			kCANStackSize, NULL, 2, &gState.taskStack, &gState.taskTCB);
+
+	if(gState.task == NULL) {
+		return kErrTaskCreationFailed;
+	}
 
 #ifdef STM32F042
 	// enable GPIO, SYSCFG clocks, then remap PA11/PA12 to the pins
@@ -102,10 +118,14 @@ void can_init(void) {
 	 * - Error interrupt
 	 * - Bus off interrupt
 	 * - Error passive interrupt
-	 * - FIFO full
-	 * - FIFO message pending
+	 * - FIFO0/1 full
+	 * - FIFO0/1 message pending
+	 * - TX mailbox empty
 	 */
-	CAN->IER |= CAN_IER_ERRIE | CAN_IER_BOFIE | CAN_IER_EPVIE | CAN_IER_FFIE0 | CAN_IER_FMPIE0;
+	CAN->IER |= CAN_IER_ERRIE | CAN_IER_BOFIE | CAN_IER_EPVIE |
+			CAN_IER_FFIE0 | CAN_IER_FMPIE0 |
+			CAN_IER_FFIE1 | CAN_IER_FMPIE1 |
+			CAN_IER_TMEIE;
 
 	// unmask interrupts
 	NVIC_EnableIRQ(CEC_CAN_IRQn);
@@ -113,17 +133,21 @@ void can_init(void) {
 
 	// configure CAN bit timing for 125kbps nominal
 	CAN->BTR = 0x001c0017;
+
+	// success
+	return kErrSuccess;
 }
 
 /**
  * Starts the CAN driver.
  */
 void can_start(void) {
+	// clear the queue
+	xQueueReset(gState.rxQueue);
+
 	// exit initialization mode; wait for INAK clear
 	CAN->MCR &= (uint32_t) ~CAN_MCR_INRQ;
 	while((CAN->MSR & CAN_MSR_INAK)) {}
-
-	// we should be good now, wait for the interrupts to come in
 }
 
 
@@ -196,69 +220,57 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
 }
 
 
+
 /**
- * Are there any messages waiting to be read?
+ * Entry point for the CAN bus task.
+ *
+ * This task is woken up by various events being sent to it from ISRs or other
+ * locations. The FreeRTOS notification field is used for this:
+ *
+ * - Bit 0: CAN error
  */
-bool can_messages_available(void) {
-	// check the entire receive queue
-	for(int i = 0; i < kRxBufferSize; i++) {
-		// is this message valid?
-		if(gCANRxBuffer[i].valid) {
-			// then yes, there are messages waiting
-			return true;
+void can_task(void) {
+	BaseType_t ok;
+	can_task_msg_t msg;
+
+	while(1) {
+		// wait for a message
+		ok = xQueueReceive(gState.taskMsgQueue, &msg, portMAX_DELAY);
+
+		if(ok != pdTRUE) {
+			LOG("xQueueReceive: %d\n", ok);
+			continue;
+		}
+
+		// handle the message
+		switch(msg.type) {
+		// transmit the frame?
+		case kCANTaskMsgTransmit:
+			ok = can_task_tx_message(&msg);
+
+			if(ok < kErrSuccess) {
+				LOG("can_task_tx_message: %d\n", ok);
+			}
+
+			break;
+
+		// CAN error detected?
+		case kCANTaskHandleError:
+			LOG("CAN error: %x\n", msg.canError);
+			break;
+
+		// invalid message type
+		default:
+			LOG("invalid can_task_msg type: %x\n", msg.type);
+			break;
 		}
 	}
-
-	// if we get here, no messages available
-	return false;
 }
 
 /**
- * Were messages dropped since the last invocation of this function?
+ * Transmits a message.
  */
-bool can_messages_dropped(void) {
-	// get state and reset it
-	bool state = gDroppedMessages;
-	gDroppedMessages = false;
-
-	return state;
-}
-
-/**
- * Copies the oldest message to the specified buffer, then removes it from the
- * internal queue.
- */
-int can_get_last_message(can_message_t *msg) {
-	// buffer cannot be null
-	if(msg == NULL) {
-		return kErrInvalidArgs;
-	}
-
-	// find an available message
-	for(int i = 0; i < kRxBufferSize; i++) {
-		// is this message valid?
-		if(gCANRxBuffer[i].valid) {
-			// copy message
-			memcpy(msg, &gCANRxBuffer[i], sizeof(can_message_t));
-
-			// mark that slot as available, return index of message
-//			rxBuffer[i].valid = 0;
-			memset(&gCANRxBuffer[i], 0, sizeof(can_message_t));
-
-			return i;
-		}
-	}
-
-	// no messages were available :(
-	return kErrCanNoRxFramesPending;
-}
-
-
-
-/**
- * Transmits the given message.
- */
-int can_transmit_message(can_message_t *msg) {
+int can_task_tx_message(can_task_msg_t *msg) {
 	// find a free transmit mailbox
 	int box = can_find_free_tx_mailbox();
 
@@ -267,7 +279,64 @@ int can_transmit_message(can_message_t *msg) {
 	}
 
 	// attempt to transmit message into that mailbox
-	return can_tx_with_mailbox(box, msg);
+	return can_tx_with_mailbox(box, &msg->txMessage);
+}
+
+
+
+/**
+ * Are there any messages waiting to be read?
+ */
+bool can_messages_available(void) {
+	return (uxQueueMessagesWaiting(gState.rxQueue) != 0);
+}
+
+/**
+ * Copies the oldest message to the specified buffer, then removes it from the
+ * internal queue.
+ *
+ * This function blocks the calling task until a frame is available.
+ */
+int can_get_last_message(can_message_t *msg) {
+	BaseType_t ok;
+
+	// buffer cannot be null
+	if(msg == NULL) {
+		return kErrInvalidArgs;
+	}
+
+	// attempt to dequeue a message
+	ok = xQueueReceive(gState.rxQueue, msg, portMAX_DELAY);
+
+	if(ok != pdTRUE) {
+		return kErrQueueReceive;
+	}
+
+	return kErrSuccess;
+}
+
+
+
+/**
+ * Transmits the given message.
+ */
+int can_transmit_message(can_message_t *txMsg) {
+	BaseType_t ok;
+
+	// construct the message
+	can_task_msg_t msg;
+	msg.type = kCANTaskMsgTransmit;
+	memcpy(&msg.txMessage, txMsg, sizeof(can_message_t));
+
+	// send it
+	ok = xQueueSendToBack(gState.taskMsgQueue, &msg, portMAX_DELAY);
+
+	if(ok != pdTRUE) {
+		return kErrQueueSend;
+	}
+
+	// otherwise, the frame was queued
+	return kErrSuccess;
 }
 
 
@@ -275,9 +344,15 @@ int can_transmit_message(can_message_t *msg) {
 /**
  * Finds the next available transmit mailbox.
  *
- * Currently, we only use mailbox 0.
+ * This will wait up to 500ms for a mailbox to open up. If no mailbox is then
+ * available, the call will error out.
  */
 int can_find_free_tx_mailbox(void) {
+	unsigned int counter = 0;
+
+	BaseType_t ok;
+	uint32_t notification;
+
 	while(true) {
 		// is mailbox 0 empty?
 		if((CAN->TSR & CAN_TSR_TME0) == CAN_TSR_TME0) {
@@ -292,7 +367,32 @@ int can_find_free_tx_mailbox(void) {
 			return 2;
 		}
 
-		// TODO: timeout in case the mailboxes are fucked
+		// was this the 6th time we've done this?
+		if(++counter == 6) {
+			LOG_PUTS("wait for tx mailbox timed out");
+			// if so, give up :(
+			break;
+		}
+
+		// wait on the notification
+checkNotification: ;
+		ok = xTaskNotifyWait(0, 0x80000000, &notification, pdMSTOTICKS(100));
+
+		if(ok == pdTRUE) {
+			// we received one, check if it was the one we care about
+			if(notification & 0x80000000) {
+				// if so, find a free mailbox
+				continue;
+			}
+			// otherwise, we got a random notification, so check again
+			else {
+				goto checkNotification;
+			}
+		}
+		// the notification timed out. try again
+		else {
+
+		}
 	}
 
 	// no mailbox could be found that's free
@@ -303,22 +403,31 @@ int can_find_free_tx_mailbox(void) {
  * Transmits the given message on the given mailbox.
  */
 int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
-	uint32_t reqAckFlag = 0, txOkFlag = 0;
+	uint32_t reqAckFlag = 0, txOkFlag = 0, mailboxEmptyFlag = 0;
 
 	// get the right flags
 	switch(mailbox) {
 	case 0:
 		reqAckFlag = CAN_TSR_RQCP0;
 		txOkFlag = CAN_TSR_TXOK0;
+		mailboxEmptyFlag = CAN_TSR_TME0;
 		break;
 	case 1:
 		reqAckFlag = CAN_TSR_RQCP1;
 		txOkFlag = CAN_TSR_TXOK1;
+		mailboxEmptyFlag = CAN_TSR_TME1;
 		break;
 	case 2:
 		reqAckFlag = CAN_TSR_RQCP2;
 		txOkFlag = CAN_TSR_TXOK2;
+		mailboxEmptyFlag = CAN_TSR_TME2;
 		break;
+	}
+
+	// make sure this mailbox is empty
+	if(!(CAN->TSR & mailboxEmptyFlag)) {
+		LOG("mailbox not empty: %u\n", mailbox);
+		return kErrCanNoFreeMailbox;
 	}
 
 	// set the address into the mailbox; use identifier extension, data frame
@@ -345,13 +454,13 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 			(msg->data[5] << 8) | (msg->data[4] << 0));
 	CAN->sTxMailBox[mailbox].TDHR = data;
 
-	// request transmission of mailbox 0, and wait for request acknowledgement
-	CAN->sTxMailBox[mailbox].TIR |= 0x00000001;
-	while(!(CAN->TSR & reqAckFlag)) {}
+	// request transmission of mailbox, and wait for request acknowledgement
+	CAN->sTxMailBox[mailbox].TIR |= CAN_TI0R_TXRQ;
+//	while(!(CAN->TSR & reqAckFlag)) {}
 
 	// wait for the message to have been transmitted successfully
-	// TODO: timeout if CAN physical layer got fucked
-	while(!(CAN->TSR & txOkFlag)) {}
+	// notification bits: 0x01000000 / 0x02000000 / 0x04000000
+//	while(!(CAN->TSR & txOkFlag)) {}
 	return kErrSuccess;
 }
 
@@ -361,6 +470,8 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
  * CAN IRQ handler
  */
 void CEC_CAN_IRQHandler(void) {
+	BaseType_t higherPriorityWoken = pdFALSE, ok;
+
 	// was this a CAN IRQ?
 //	if(SYSCFG->IT_LINE_SR[30] & SYSCFG_ITLINE30_SR_CAN) {
 	if(1) {
@@ -368,11 +479,38 @@ void CEC_CAN_IRQHandler(void) {
 
 		// is this an error interrupt?
 		if(masterIrq & CAN_MSR_ERRI) {
-			// TODO: handle error interrupts
-			LOG("CAN error: %x\n", CAN->ESR);
-
 			// acknowledge error interrupt
 			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
+
+			// send a message to the handler task
+			can_task_msg_t msg;
+			msg.type = kCANTaskHandleError;
+			msg.canError = CAN->ESR;
+
+			ok = xQueueSendToFrontFromISR(gState.taskMsgQueue, &msg, &higherPriorityWoken);
+		}
+		// did a TX mailbox free up? (check if at least one mailbox is free)
+		masterIrq = CAN->TSR;
+
+		if((masterIrq & (CAN_TSR_TME2 | CAN_TSR_TME1 | CAN_TSR_TME0)) != (CAN_TSR_TME2 | CAN_TSR_TME1 | CAN_TSR_TME0)) {
+			// we don't care about which mailbox became empty, just notify waiting task
+			// acknowledge the interrupt
+			CAN->TSR = CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2;
+
+			// notify the CAN message task
+			ok = xTaskNotifyFromISR(gState.task, 0x80000000, eSetBits, &higherPriorityWoken);
+		}
+
+		// did a mailbox transmit successfully?
+		if(masterIrq & CAN_TSR_TXOK0) {
+			ok = xTaskNotifyFromISR(gState.task, 0x01000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP0;
+		} if(masterIrq & CAN_TSR_TXOK1) {
+			ok = xTaskNotifyFromISR(gState.task, 0x02000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP1;
+		} if(masterIrq & CAN_TSR_TXOK2) {
+			ok = xTaskNotifyFromISR(gState.task, 0x04000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP2;
 		}
 
 		// do we have any pending messages in the FIFOs? repeat while we do
@@ -380,105 +518,105 @@ void CEC_CAN_IRQHandler(void) {
 		uint32_t fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
 
 		while(fifo0_pending || fifo1_pending) {
-//		if(fifo0_pending || fifo1_pending) {
 			// is there any pending messages in FIFO 0?
 			if(fifo0_pending) {
-				can_read_fifo(0);
+				higherPriorityWoken = can_isr_read_fifo(0) ? pdTRUE : pdFALSE;
 			}
 			// are there any pending messages in FIFO 1?
 			if(fifo1_pending) {
-				can_read_fifo(1);
+				higherPriorityWoken = can_isr_read_fifo(1) ? pdTRUE : pdFALSE;
 			}
 
 			// check for overruns
-			can_check_fifo_overrun();
+			can_isr_check_fifo_overrun();
 
 			// re-check fifo status
 			fifo0_pending = (CAN->RF0R & CAN_RF0R_FMP0);
 			fifo1_pending = (CAN->RF1R & CAN_RF1R_FMP1);
 		}
 	}
+
+	// force a context switch if needed
+    portYIELD_FROM_ISR(higherPriorityWoken);
 }
 
 /**
  * Reads a message from the specified FIFO.
+ *
+ * @note This function MAY be called from an ISR.
+ *
+ * @return Whether a higher priority task was woken.
  */
-void can_read_fifo(int fifo) {
-	// find a free slot in the receive buffer
-	int freeRxSlot = -1;
-
-	for(int i = 0; i < kRxBufferSize; i++) {
-		// is this slot free?
-		if(!gCANRxBuffer[i].valid) {
-			// yup, copy index and leave
-			freeRxSlot = i;
-			break;
-		}
-	}
-
-	// if no free slot was found, return. we will probably loose this message
-	if(freeRxSlot == -1) {
-		LOG_PUTS("discarded CAN message");
-		return;
-	}
+bool can_isr_read_fifo(int fifo) {
+	BaseType_t ok;
 
 	// get the identifier of the message
-	can_message_t *msg = &gCANRxBuffer[freeRxSlot];
+	can_message_t msg;
+	memset(&msg, 0, sizeof(msg));
 
-	msg->valid = 1;
-	msg->rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
-	msg->identifier = (CAN->sFIFOMailBox[fifo].RIR & 0xFFFFFFF8) >> 3;
+	msg.valid = 1;
+	msg.rtr = (CAN->sFIFOMailBox[fifo].RIR & 0x02) ? 1 : 0;
+	msg.identifier = (CAN->sFIFOMailBox[fifo].RIR & 0xFFFFFFF8) >> 3;
 
 	// copy the data out of the register
-	msg->length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
+	msg.length = CAN->sFIFOMailBox[fifo].RDTR & CAN_RDT0R_DLC;
 
 	uint32_t data;
 
 	// read low word of data
 	data = CAN->sFIFOMailBox[fifo].RDLR;
 
-	msg->data[0] = (uint8_t) ((data & 0x000000FF) >> 0);
-	msg->data[1] = (uint8_t) ((data & 0x0000FF00) >> 8);
-	msg->data[2] = (uint8_t) ((data & 0x00FF0000) >> 16);
-	msg->data[3] = (uint8_t) ((data & 0xFF000000) >> 24);
+	msg.data[0] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg.data[1] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg.data[2] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg.data[3] = (uint8_t) ((data & 0xFF000000) >> 24);
 
 	// read high word of data
 	data = CAN->sFIFOMailBox[fifo].RDHR;
 
-	msg->data[4] = (uint8_t) ((data & 0x000000FF) >> 0);
-	msg->data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
-	msg->data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
-	msg->data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
+	msg.data[4] = (uint8_t) ((data & 0x000000FF) >> 0);
+	msg.data[5] = (uint8_t) ((data & 0x0000FF00) >> 8);
+	msg.data[6] = (uint8_t) ((data & 0x00FF0000) >> 16);
+	msg.data[7] = (uint8_t) ((data & 0xFF000000) >> 24);
 
 	// release message from the FIFO
 	if(fifo == 0) {
 		CAN->RF0R |= CAN_RF0R_RFOM0;
 
 		// wait for the mailbox to be released
-//		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
+		while(CAN->RF0R & CAN_RF0R_RFOM0) {}
 	} else if(fifo == 1) {
 		CAN->RF1R |= CAN_RF1R_RFOM1;
 
 		// wait for the mailbox to be released
-//		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
+		while(CAN->RF1R & CAN_RF1R_RFOM1) {}
 	}
+
+	// send message to queue
+	BaseType_t wokeHigherPriority;
+
+	ok = xQueueSendFromISR(gState.rxQueue, &msg, &wokeHigherPriority);
+
+	if(ok != pdTRUE) {
+		LOG("xQueueSendFromISR: %d\n", ok);
+	}
+
+	return (wokeHigherPriority == pdTRUE);
 }
 
 /**
  * Checks whether the receive FIFOs were overrun.
  */
-void can_check_fifo_overrun(void) {
+void can_isr_check_fifo_overrun(void) {
 	// was FIFO0 overrun?
 	if(CAN->RF0R & CAN_RF0R_FOVR0) {
-		gDroppedMessages = true;
-		gNumDroppedMessages++;
+		gState.numDroppedMessages++;
 
 		CAN->RF0R &= (uint32_t) ~CAN_RF0R_FOVR0;
 	}
 	// Was FIFO1 overrun?
 	if(CAN->RF1R & CAN_RF1R_FOVR1) {
-		gDroppedMessages = true;
-		gNumDroppedMessages++;
+		gState.numDroppedMessages++;
 
 		CAN->RF1R &= (uint32_t) ~CAN_RF1R_FOVR1;
 	}
