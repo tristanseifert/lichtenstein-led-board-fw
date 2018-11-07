@@ -117,10 +117,12 @@ __attribute__((__section__(".data"))) void ws2812_send_4bytes(int numLeds, uint3
 			"str		%[clear], [%[gpio]]\n"
 
 			// wait 32 (42 - 3 for branch, -1 for sub, -1 for lsr, -4 for test at top) cycles
-			".rept	33\n"
+			".rept	23\n"
+//			".rept	33\n"
 			"nop\n"
 			".endr\n"
-			"b		next%=\n"
+//			"b		next%=\n"
+			"b		next_wait%=\n"
 
 			// it's a 1 bit. high for 900ns (43), low for 350ns (16)
 			"one%=:\n"
@@ -130,6 +132,9 @@ __attribute__((__section__(".data"))) void ws2812_send_4bytes(int numLeds, uint3
 			".endr\n"
 			// set the output low
 			"str		%[clear], [%[gpio]]\n"
+
+			// the nops are jumped to by the 0 bits to save space
+			"next_wait%=:\n"
 
 			// wait 8 cycles (16 - 3 for bne, 1 for sub, 1 for lsr, -2 for test at top)
 			".rept	10\n"
