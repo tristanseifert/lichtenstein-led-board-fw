@@ -451,6 +451,8 @@
                             							
                             <option id="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.122564856.534681065" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.122564856"/>
                             							
+                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
+                            							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.2078701038" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1134116214">
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.2100265624" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
@@ -459,7 +461,7 @@
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.983893436" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.529798148">
                                 								
-                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1660830386" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-Os" valueType="string"/>
+                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1660830386" name="Other optimization flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-Os" valueType="string"/>
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.588316879" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
                                 							
@@ -804,6 +806,18 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.837005238" name="light_ws2812_cortex.c" rcbsApplicability="disable" resourcePath="src/hw/light_ws2812_cortex.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264.1231081220">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264.1231081220" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1465965727" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" useByScannerDiscovery="true" value="-O2" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1004306854" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <sourceEntries>
                         						
@@ -1269,6 +1283,8 @@
                             							
                             <option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.1974683070.575374603" name="Disable loop invariant move (-fno-move-loop-invariants)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.1974683070"/>
                             							
+                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
+                            							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1781336277" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.190340038">
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.1350280268" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
@@ -1277,7 +1293,7 @@
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1684796290" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.545567755">
                                 								
-                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.554996820" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-Os" valueType="string"/>
+                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.554996820" name="Other optimization flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-Os" valueType="string"/>
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.37117218" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
                                 							
@@ -1606,6 +1622,18 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.707485724.1815239729" name="light_ws2812_cortex.c" rcbsApplicability="disable" resourcePath="src/hw/light_ws2812_cortex.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622.1059735508">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622.1059735508" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1301048360" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-O2" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1518314860" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <sourceEntries>
                         						
@@ -2071,6 +2099,8 @@
                             							
                             <option id="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1627331078.64927263" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1627331078"/>
                             							
+                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
+                            							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1048732424" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.248596927">
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.2004192088" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
@@ -2079,7 +2109,7 @@
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.922553813" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.64712301">
                                 								
-                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1458738060" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" useByScannerDiscovery="true" value="-Os" valueType="string"/>
+                                <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.1458738060" name="Other optimization flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" useByScannerDiscovery="true" value="-Os" valueType="string"/>
                                 								
                                 <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.2024583345" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
                                 							
@@ -2420,6 +2450,18 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.515416231.987950980" name="light_ws2812_cortex.c" rcbsApplicability="disable" resourcePath="src/hw/light_ws2812_cortex.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725.1887143941">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725.1887143941" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations.2024435649" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.otheroptimizations" value="-O2" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1251282381" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <sourceEntries>
                         						

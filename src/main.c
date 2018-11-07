@@ -7,7 +7,6 @@
 #include "hw/status.h"
 #include "hw/output_mux.h"
 #include "hw/differential_rx.h"
-#include "hw/ws2811_generator.h"
 #include "periph/spi.h"
 #include "periph/canbus.h"
 #include "periph/adc.h"
@@ -24,6 +23,7 @@
 #include "task.h"
 
 #include "gitcommit.h"
+#include "hw/ws2812_generator.h"
 
 /**
  * Performs initialization of all hardware.
@@ -34,7 +34,7 @@ static void init_hardware(void) {
 	status_init();
 	mux_init();
 	diffrx_init();
-	ws2811_init();
+	ws2812_init();
 	spi_init();
 	can_init();
 	adc_init();
@@ -81,7 +81,7 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	lichtenstein_cannabus_init();
 
 	// reset the outputs, then enable differential driver
-	ws2811_send_pixel(300, kWS2811PixelTypeRGBW, 0x00000000);
+	ws2812_send_pixel(300, kWS2812PixelTypeRGBW, 0x00000000);
 
 	diffrx_set_state(kDiffRxEnabled);
 

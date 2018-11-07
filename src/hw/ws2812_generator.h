@@ -19,16 +19,16 @@
  * SK6812 (4 bytes shifted out per pixel)
  */
 typedef enum {
-	kWS2811PixelTypeRGB,
-	kWS2811PixelTypeRGBW,
-} ws2811_pixel_type;
+	kWS2812PixelTypeRGB,
+	kWS2812PixelTypeRGBW,
+} ws2812_pixel_type;
 
 
 
 /**
  * Initializes the test generator.
  */
-void ws2811_init(void);
+void ws2812_init(void);
 
 /**
  * Sends n repetitions of the given pixel value.
@@ -36,6 +36,6 @@ void ws2811_init(void);
  * This works for both SK6812RGBW and WS2811-type pixels since they speak the
  * same protocol, so long as the correct type is specified.
  */
-void ws2811_send_pixel(int count, ws2811_pixel_type type, uint32_t pixel);
+void ws2812_send_pixel(int count, ws2812_pixel_type type, uint32_t pixel);
 
 #endif /* WS2811_GENERATOR_H_ */
