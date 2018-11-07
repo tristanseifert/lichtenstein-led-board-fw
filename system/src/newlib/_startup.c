@@ -53,6 +53,8 @@
 
 // ----------------------------------------------------------------------------
 
+#include "stm32f0xx.h"
+
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -61,6 +63,10 @@
 #if !defined(OS_INCLUDE_STARTUP_GUARD_CHECKS)
 #define OS_INCLUDE_STARTUP_GUARD_CHECKS (1)
 #endif
+
+extern unsigned int __ram_vectors_start;
+extern unsigned int __ram_vectors_end;
+extern unsigned int __vectors_start;
 
 // ----------------------------------------------------------------------------
 
@@ -255,6 +261,12 @@ _start (void)
   // initialised before filling the BSS section.
 
   __initialize_hardware_early ();
+
+  // copy vector table to RAM and remap RAM to 0x00000000
+  __initialize_data(&__vectors_start, &__ram_vectors_start, &__ram_vectors_end);
+
+  SYSCFG->CFGR1 |= SYSCFG_CFGR1_MEM_MODE;
+
 
   // Use Old Style DATA and BSS section initialisation,
   // that will manage a single BSS sections.

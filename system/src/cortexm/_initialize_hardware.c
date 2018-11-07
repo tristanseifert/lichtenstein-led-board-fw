@@ -57,7 +57,8 @@ __attribute__((weak))
 __initialize_hardware_early(void)
 {
   // Call the CSMSIS system initialisation routine.
-  SystemInit();
+	// not needed, the bootloader does all this for us
+//  SystemInit();
 
 #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
   // Set VTOR to the actual address, provided by the linker script.

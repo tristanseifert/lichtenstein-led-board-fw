@@ -84,6 +84,7 @@ SECTIONS
         __vectors_start = ABSOLUTE(.) ;
         __vectors_start__ = ABSOLUTE(.) ; /* STM specific definition */
         KEEP(*(.isr_vector))     	/* Interrupt vectors */
+        __vectors_end = ABSOLUTE(.);
         
 		KEEP(*(.cfmconfig))			/* Freescale configuration words */   
 		     
@@ -287,7 +288,7 @@ SECTIONS
      * FLASH to RAM.
      */
     .data : ALIGN(4)
-    {
+    {        
     	FILL(0xFF)
         /* This is used by the startup code to initialise the .data section */
         _sdata = . ;        	/* STM specific definition */
@@ -463,6 +464,12 @@ SECTIONS
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }    
     
+    /* defines the RAM vector section at RAM address 0x0000 */
+    .ram_vectors : ALIGN(4) {
+    	__ram_vectors_start = .;
+        	. = . + (__vectors_end - __vectors_start);
+       	__ram_vectors_end = .; 
+    } > RAM_VECTORS
     /* defines the version section at flash address 0x7FF0 */
     .version : ALIGN(4) {
     	__version_start = .;
