@@ -17,6 +17,7 @@
 
 #include "cannabus/cannabus.h"
 
+#include "lichtenstein_app/version.h"
 #include "lichtenstein_app/cannabus_init.h"
 
 #include "FreeRTOS.h"
@@ -61,7 +62,9 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 #ifdef DEBUG
 		// initialize trace
 		trace_initialize();
-		LOG("lichtenstein-led-fw %s\n", GIT_INFO);
+		LOG("lichtenstein-led-fw (0x%x, built %u) %s\n",
+				kLichtensteinVersion.version, kLichtensteinVersion.buildTime,
+				GIT_INFO);
 
 	#ifdef STM32F042
 		LOG_PUTS("hw: STM32F042");

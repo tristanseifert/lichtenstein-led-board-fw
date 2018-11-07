@@ -50,7 +50,7 @@ typedef struct {
 
 	/// Info about one of 8 firmware images
 	struct {
-		/// Firmware version
+		/// Firmware version (0xFFFF == unused)
 		uint16_t version;
 		/// How many startup failures were there?
 		uint8_t startFails;

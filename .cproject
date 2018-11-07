@@ -521,6 +521,36 @@
                         					
                     </folderInfo>
                     					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.534635355" name="version.c" rcbsApplicability="disable" resourcePath="src/lichtenstein_app/version.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264.1708474688">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264.1708474688" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1597732264">
+                            							
+                            <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1009604938" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" valueType="definedSymbols">
+                                								
+                                <listOptionValue builtIn="false" value="DEBUG"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_FULL_ASSERT"/>
+                                								
+                                <listOptionValue builtIn="false" value="TRACE"/>
+                                								
+                                <listOptionValue builtIn="false" value="OS_USE_TRACE_ITM"/>
+                                								
+                                <listOptionValue builtIn="false" value="STM32F072"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_STDPERIPH_DRIVER"/>
+                                								
+                                <listOptionValue builtIn="false" value="HSE_VALUE=8000000"/>
+                                								
+                                <listOptionValue builtIn="false" value="COMPILE_TIME=`date '+%s'`"/>
+                                							
+                            </option>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1023139286" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
+                    					
                     <folderInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.231820905" name="/" resourcePath="src/FreeRTOS">
                         						
                         <toolChain id="ilg.gnuarmeclipse.managedbuild.cross.toolchain.elf.debug.1239084637" name="ARM Cross GCC" superClass="ilg.gnuarmeclipse.managedbuild.cross.toolchain.elf.debug" unusedChildren="">
@@ -1189,6 +1219,36 @@
                         					
                     </folderInfo>
                     					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.707485724.1055795929" name="version.c" rcbsApplicability="disable" resourcePath="src/lichtenstein_app/version.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622.1970671129">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622.1970671129" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622">
+                            							
+                            <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.449225497" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" valueType="definedSymbols">
+                                								
+                                <listOptionValue builtIn="false" value="DEBUG"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_FULL_ASSERT"/>
+                                								
+                                <listOptionValue builtIn="false" value="TRACE"/>
+                                								
+                                <listOptionValue builtIn="false" value="OS_USE_TRACE_ITM"/>
+                                								
+                                <listOptionValue builtIn="false" value="STM32F072"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_STDPERIPH_DRIVER"/>
+                                								
+                                <listOptionValue builtIn="false" value="HSE_VALUE=8000000"/>
+                                								
+                                <listOptionValue builtIn="false" value="COMPILE_TIME=`date '+%s'`"/>
+                                							
+                            </option>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.2028477098" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
+                    					
                     <folderInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.707485724.1680502754" name="/" resourcePath="src/FreeRTOS">
                         						
                         <toolChain id="ilg.gnuarmeclipse.managedbuild.cross.toolchain.elf.release.1510482203" name="ARM Cross GCC" superClass="ilg.gnuarmeclipse.managedbuild.cross.toolchain.elf.release" unusedChildren="">
@@ -1271,11 +1331,25 @@
                             							
                             <option id="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.1974683070.1748014134.2060690260" name="Disable loop invariant move (-fno-move-loop-invariants)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.optimization.nomoveloopinvariants.1974683070.1748014134"/>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1234061692" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1559471335"/>
+                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1062988584" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622"/>
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1234061692" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1559471335">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.61759481" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
+                                							
+                            </tool>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1336921470" name="GNU ARM Cross C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.485419808"/>
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1062988584" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.608345622">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.2071312595" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                                							
+                            </tool>
+                            							
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1336921470" name="GNU ARM Cross C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.485419808">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.291759010" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input"/>
+                                							
+                            </tool>
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.2068281413" name="GNU ARM Cross C Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.1063679332"/>
                             							
@@ -1785,7 +1859,7 @@
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.64712301">
                                 								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1966289494" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" valueType="includePath">
+                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1966289494" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="true" valueType="includePath">
                                     									
                                     <listOptionValue builtIn="false" value="&quot;../include&quot;"/>
                                     									
@@ -1826,6 +1900,48 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.515416231.459090759" name="version.c" rcbsApplicability="disable" resourcePath="src/lichtenstein_app/version.c" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725.1324364633">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725.1324364633" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725">
+                            							
+                            <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.481124580" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
+                                								
+                                <listOptionValue builtIn="false" value="DEBUG"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_FULL_ASSERT"/>
+                                								
+                                <listOptionValue builtIn="false" value="TRACE"/>
+                                								
+                                <listOptionValue builtIn="false" value="OS_USE_TRACE_ITM"/>
+                                								
+                                <listOptionValue builtIn="false" value="STM32F072"/>
+                                								
+                                <listOptionValue builtIn="false" value="USE_STDPERIPH_DRIVER"/>
+                                								
+                                <listOptionValue builtIn="false" value="HSE_VALUE=8000000"/>
+                                								
+                                <listOptionValue builtIn="false" value="COMPILE_TIME=`date '+%s'`"/>
+                                							
+                            </option>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1570867738" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                            						
+                        </tool>
+                        						
+                        <tool customBuildStep="true" id="org.eclipse.cdt.managedbuilder.ui.rcbs.99343376" name="Resource Custom Build Step">
+                            							
+                            <inputType id="org.eclipse.cdt.managedbuilder.ui.rcbs.inputtype.2004464800" name="Resource Custom Build Step Input Type">
+                                								
+                                <additionalInput kind="additionalinputdependency" paths=""/>
+                                							
+                            </inputType>
+                            							
+                            <outputType id="org.eclipse.cdt.managedbuilder.ui.rcbs.outputtype.418706205" name="Resource Custom Build Step Output Type"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <folderInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.515416231.516058152" name="/" resourcePath="src/FreeRTOS">
                         						
@@ -1909,11 +2025,25 @@
                             							
                             <option id="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1627331078.913572791.1011790223" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.toolchain.id.1627331078.913572791"/>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.416118358" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1880594191"/>
+                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform" isAbstract="false" osList="all" superClass="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform"/>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1759143072" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725"/>
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.416118358" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1880594191">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.118962728" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
+                                							
+                            </tool>
                             							
-                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1796090007" name="GNU ARM Cross C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.678597629"/>
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1759143072" name="GNU ARM Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.770663725">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1403017877" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
+                                							
+                            </tool>
+                            							
+                            <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.1796090007" name="GNU ARM Cross C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.678597629">
+                                								
+                                <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.1388265702" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input"/>
+                                							
+                            </tool>
                             							
                             <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.1962420723" name="GNU ARM Cross C Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.1437581168"/>
                             							
