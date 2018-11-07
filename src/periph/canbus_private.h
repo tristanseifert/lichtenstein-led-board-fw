@@ -21,13 +21,53 @@
 
 /// size of the RX buffer
 #define kCANRxBufferSize			8
+/// size of the CAN task message buffer
+#define kCANMsgBufferSize			4
+
 /// size of the CAN bus driver stack (words)
-#define kCANStackSize				100
+#define kCANStackSize				70
+
+
+
+/**
+ * Message types for the CAN task
+ */
+typedef enum {
+	/// transmits a frame
+	kCANTaskMsgTransmit				= 0x01,
+	/// CAN error interrupt
+	kCANTaskHandleError				= 0x02,
+} can_task_msg_type_t;
+
+/**
+ * Message to pass to the CAN task
+ */
+typedef struct {
+	/// type of message (see can_task_msg_type_t)
+	uint8_t type;
+
+	/// various message parameters
+	union {
+		/// can message for transmission
+		can_message_t txMessage;
+		/// error register state (CAN->ESR)
+		uint32_t canError;
+	};
+} can_task_msg_t;
+
 
 /**
  * Internal state of the CAN bus driver
  */
 typedef struct {
+	/// CAN task message buffer
+	can_task_msg_t taskMsgBuffer[kCANMsgBufferSize];
+	/// CAN task message queue struct
+	StaticQueue_t taskMsgQueueStruct;
+	/// CAN task message queue
+	QueueHandle_t taskMsgQueue;
+
+
 	/// receive buffer
 	can_message_t rxQueueBuffer[kCANRxBufferSize];
 	/// receive queue struct
@@ -52,6 +92,11 @@ typedef struct {
  * This task primarily handles receiving frames.
  */
 void can_task(void);
+
+/**
+ * Transmits a message.
+ */
+int can_task_tx_message(can_task_msg_t *msg);
 
 
 

@@ -13,6 +13,9 @@
 enum {
 	kErrSuccess					= 0,
 
+	/// attempted call is not implemented
+	kErrUnimplemented			= -999,
+
 	// generic errors
 	kErrInvalidArgs				= -1000,
 	kErrInsufficientResources	= -1001,
@@ -25,6 +28,8 @@ enum {
 
 	/// an error occurred when receiving from a queue
 	kErrQueueReceive			= -1010,
+	/// an error occurred when sending to a queue
+	kErrQueueSend				= -1011,
 
 };
 

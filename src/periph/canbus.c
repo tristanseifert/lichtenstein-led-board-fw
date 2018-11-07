@@ -43,6 +43,15 @@ int can_init(void) {
 		return kErrQueueCreationFailed;
 	}
 
+	// create task message queue
+	gState.taskMsgQueue = xQueueCreateStatic(kCANMsgBufferSize,
+			sizeof(can_task_msg_t), &gState.taskMsgBuffer,
+			&gState.taskMsgQueueStruct);
+
+	if(gState.taskMsgQueue == NULL) {
+		return kErrQueueCreationFailed;
+	}
+
 	// create the task
 	gState.task = xTaskCreateStatic(can_task, "CAN",
 			kCANStackSize, NULL, 2, &gState.taskStack, &gState.taskTCB);
@@ -218,21 +227,55 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
  */
 void can_task(void) {
 	BaseType_t ok;
-	uint32_t notification;
+	can_task_msg_t msg;
 
 	while(1) {
-		// wait for events
-		ok = xTaskNotifyWait(0, 0x07, &notification, portMAX_DELAY);
+		// wait for a message
+		ok = xQueueReceive(gState.taskMsgQueue, &msg, portMAX_DELAY);
 
 		if(ok != pdTRUE) {
-			LOG("xTaskNotifyWait: %d\n", ok);
+			LOG("xQueueReceive: %d\n", ok);
+			continue;
 		}
 
-		// was a CAN error detected?
-		if(notification & 0x01) {
-			LOG("CAN error: %x\n", CAN->ESR);
+		// handle the message
+		switch(msg.type) {
+		// transmit the frame?
+		case kCANTaskMsgTransmit:
+			ok = can_task_tx_message(&msg);
+
+			if(ok < kErrSuccess) {
+				LOG("can_task_tx_message: %d\n", ok);
+			}
+
+			break;
+
+		// CAN error detected?
+		case kCANTaskHandleError:
+			LOG("CAN error: %x\n", msg.canError);
+			break;
+
+		// invalid message type
+		default:
+			LOG("invalid can_task_msg type: %x\n", msg.type);
+			break;
 		}
 	}
+}
+
+/**
+ * Transmits a message.
+ */
+int can_task_tx_message(can_task_msg_t *msg) {
+	// find a free transmit mailbox
+	int box = can_find_free_tx_mailbox();
+
+	if(box < 0) {
+		return kErrCanNoFreeMailbox;
+	}
+
+	// attempt to transmit message into that mailbox
+	return can_tx_with_mailbox(box, &msg->txMessage);
 }
 
 
@@ -273,16 +316,23 @@ int can_get_last_message(can_message_t *msg) {
 /**
  * Transmits the given message.
  */
-int can_transmit_message(can_message_t *msg) {
-	// find a free transmit mailbox
-	int box = can_find_free_tx_mailbox();
+int can_transmit_message(can_message_t *txMsg) {
+	BaseType_t ok;
 
-	if(box < 0) {
-		return kErrCanNoFreeMailbox;
+	// construct the message
+	can_task_msg_t msg;
+	msg.type = kCANTaskMsgTransmit;
+	memcpy(&msg.txMessage, txMsg, sizeof(can_message_t));
+
+	// send it
+	ok = xQueueSendToBack(gState.taskMsgQueue, &msg, portMAX_DELAY);
+
+	if(ok != pdTRUE) {
+		return kErrQueueSend;
 	}
 
-	// attempt to transmit message into that mailbox
-	return can_tx_with_mailbox(box, msg);
+	// otherwise, the frame was queued
+	return kErrSuccess;
 }
 
 
@@ -388,8 +438,12 @@ void CEC_CAN_IRQHandler(void) {
 			// acknowledge error interrupt
 			CAN->MSR &= (uint32_t) ~CAN_MSR_ERRI;
 
-			// notify task
-			ok = xTaskNotifyFromISR(gState.task, 0x01, eSetBits, &higherPriorityWoken);
+			// send a message to the handler task
+			can_task_msg_t msg;
+			msg.type = kCANTaskHandleError;
+			msg.canError = CAN->ESR;
+
+			ok = xQueueSendToFrontFromISR(gState.taskMsgQueue, &msg, &higherPriorityWoken);
 		}
 
 		// do we have any pending messages in the FIFOs? repeat while we do

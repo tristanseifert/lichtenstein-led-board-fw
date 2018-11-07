@@ -58,15 +58,17 @@ static void init_hardware(void) {
  * Application entry point
  */
 int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
-	// initialize trace
-	trace_initialize();
-	LOG("lichtenstein-led-fw %s\n", GIT_INFO);
+#ifdef DEBUG
+		// initialize trace
+		trace_initialize();
+		LOG("lichtenstein-led-fw %s\n", GIT_INFO);
 
-#ifdef STM32F042
-	LOG_PUTS("hw: STM32F042");
-#endif
-#ifdef STM32F072
-	LOG_PUTS("hw: STM32F072");
+	#ifdef STM32F042
+		LOG_PUTS("hw: STM32F042");
+	#endif
+	#ifdef STM32F072
+		LOG_PUTS("hw: STM32F072");
+	#endif
 #endif
 
 	// initialize hardware/peripherals
