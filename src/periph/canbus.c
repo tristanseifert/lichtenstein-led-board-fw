@@ -118,10 +118,14 @@ int can_init(void) {
 	 * - Error interrupt
 	 * - Bus off interrupt
 	 * - Error passive interrupt
-	 * - FIFO full
-	 * - FIFO message pending
+	 * - FIFO0/1 full
+	 * - FIFO0/1 message pending
+	 * - TX mailbox empty
 	 */
-	CAN->IER |= CAN_IER_ERRIE | CAN_IER_BOFIE | CAN_IER_EPVIE | CAN_IER_FFIE0 | CAN_IER_FMPIE0;
+	CAN->IER |= CAN_IER_ERRIE | CAN_IER_BOFIE | CAN_IER_EPVIE |
+			CAN_IER_FFIE0 | CAN_IER_FMPIE0 |
+			CAN_IER_FFIE1 | CAN_IER_FMPIE1 |
+			CAN_IER_TMEIE;
 
 	// unmask interrupts
 	NVIC_EnableIRQ(CEC_CAN_IRQn);
@@ -340,9 +344,15 @@ int can_transmit_message(can_message_t *txMsg) {
 /**
  * Finds the next available transmit mailbox.
  *
- * Currently, we only use mailbox 0.
+ * This will wait up to 500ms for a mailbox to open up. If no mailbox is then
+ * available, the call will error out.
  */
 int can_find_free_tx_mailbox(void) {
+	unsigned int counter = 0;
+
+	BaseType_t ok;
+	uint32_t notification;
+
 	while(true) {
 		// is mailbox 0 empty?
 		if((CAN->TSR & CAN_TSR_TME0) == CAN_TSR_TME0) {
@@ -357,7 +367,32 @@ int can_find_free_tx_mailbox(void) {
 			return 2;
 		}
 
-		// TODO: timeout in case the mailboxes are fucked
+		// was this the 6th time we've done this?
+		if(++counter == 6) {
+			LOG_PUTS("wait for tx mailbox timed out");
+			// if so, give up :(
+			break;
+		}
+
+		// wait on the notification
+checkNotification: ;
+		ok = xTaskNotifyWait(0, 0x80000000, &notification, pdMSTOTICKS(100));
+
+		if(ok == pdTRUE) {
+			// we received one, check if it was the one we care about
+			if(notification & 0x80000000) {
+				// if so, find a free mailbox
+				continue;
+			}
+			// otherwise, we got a random notification, so check again
+			else {
+				goto checkNotification;
+			}
+		}
+		// the notification timed out. try again
+		else {
+
+		}
 	}
 
 	// no mailbox could be found that's free
@@ -368,22 +403,31 @@ int can_find_free_tx_mailbox(void) {
  * Transmits the given message on the given mailbox.
  */
 int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
-	uint32_t reqAckFlag = 0, txOkFlag = 0;
+	uint32_t reqAckFlag = 0, txOkFlag = 0, mailboxEmptyFlag = 0;
 
 	// get the right flags
 	switch(mailbox) {
 	case 0:
 		reqAckFlag = CAN_TSR_RQCP0;
 		txOkFlag = CAN_TSR_TXOK0;
+		mailboxEmptyFlag = CAN_TSR_TME0;
 		break;
 	case 1:
 		reqAckFlag = CAN_TSR_RQCP1;
 		txOkFlag = CAN_TSR_TXOK1;
+		mailboxEmptyFlag = CAN_TSR_TME1;
 		break;
 	case 2:
 		reqAckFlag = CAN_TSR_RQCP2;
 		txOkFlag = CAN_TSR_TXOK2;
+		mailboxEmptyFlag = CAN_TSR_TME2;
 		break;
+	}
+
+	// make sure this mailbox is empty
+	if(!(CAN->TSR & mailboxEmptyFlag)) {
+		LOG("mailbox not empty: %u\n", mailbox);
+		return kErrCanNoFreeMailbox;
 	}
 
 	// set the address into the mailbox; use identifier extension, data frame
@@ -410,13 +454,13 @@ int can_tx_with_mailbox(int mailbox, can_message_t *msg) {
 			(msg->data[5] << 8) | (msg->data[4] << 0));
 	CAN->sTxMailBox[mailbox].TDHR = data;
 
-	// request transmission of mailbox 0, and wait for request acknowledgement
-	CAN->sTxMailBox[mailbox].TIR |= 0x00000001;
-	while(!(CAN->TSR & reqAckFlag)) {}
+	// request transmission of mailbox, and wait for request acknowledgement
+	CAN->sTxMailBox[mailbox].TIR |= CAN_TI0R_TXRQ;
+//	while(!(CAN->TSR & reqAckFlag)) {}
 
 	// wait for the message to have been transmitted successfully
-	// TODO: timeout if CAN physical layer got fucked
-	while(!(CAN->TSR & txOkFlag)) {}
+	// notification bits: 0x01000000 / 0x02000000 / 0x04000000
+//	while(!(CAN->TSR & txOkFlag)) {}
 	return kErrSuccess;
 }
 
@@ -444,6 +488,29 @@ void CEC_CAN_IRQHandler(void) {
 			msg.canError = CAN->ESR;
 
 			ok = xQueueSendToFrontFromISR(gState.taskMsgQueue, &msg, &higherPriorityWoken);
+		}
+		// did a TX mailbox free up? (check if at least one mailbox is free)
+		masterIrq = CAN->TSR;
+
+		if((masterIrq & (CAN_TSR_TME2 | CAN_TSR_TME1 | CAN_TSR_TME0)) != (CAN_TSR_TME2 | CAN_TSR_TME1 | CAN_TSR_TME0)) {
+			// we don't care about which mailbox became empty, just notify waiting task
+			// acknowledge the interrupt
+			CAN->TSR = CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2;
+
+			// notify the CAN message task
+			ok = xTaskNotifyFromISR(gState.task, 0x80000000, eSetBits, &higherPriorityWoken);
+		}
+
+		// did a mailbox transmit successfully?
+		if(masterIrq & CAN_TSR_TXOK0) {
+			ok = xTaskNotifyFromISR(gState.task, 0x01000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP0;
+		} if(masterIrq & CAN_TSR_TXOK1) {
+			ok = xTaskNotifyFromISR(gState.task, 0x02000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP1;
+		} if(masterIrq & CAN_TSR_TXOK2) {
+			ok = xTaskNotifyFromISR(gState.task, 0x04000000, eSetBits, &higherPriorityWoken);
+			CAN->TSR = CAN_TSR_RQCP2;
 		}
 
 		// do we have any pending messages in the FIFOs? repeat while we do

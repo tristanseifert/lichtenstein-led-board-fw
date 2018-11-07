@@ -118,6 +118,8 @@ extern uint32_t SystemCoreClock;
 // assert for FreeRTOS
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); __asm volatile("bkpt 0"); for( ;; ); }
 
+// define some conversion helpers
+#define pdMSTOTICKS(xTimeInMs) ((TickType_t) (((TickType_t) (xTimeInMs) * (TickType_t) configTICK_RATE_HZ) / (TickType_t) 1000))
 
 // mapping of ISR names
 #define vPortSVCHandler SVC_Handler

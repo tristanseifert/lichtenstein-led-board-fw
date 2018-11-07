@@ -67,7 +67,6 @@ typedef struct {
 	/// CAN task message queue
 	QueueHandle_t taskMsgQueue;
 
-
 	/// receive buffer
 	can_message_t rxQueueBuffer[kCANRxBufferSize];
 	/// receive queue struct
