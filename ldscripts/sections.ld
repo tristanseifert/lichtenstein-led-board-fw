@@ -476,4 +476,10 @@ SECTIONS
     	*(.version*)
     	__version_end = .;
     } > FLASH_VERS
+    /* section for bootloader loader info */
+    .loaderinfo (NOLOAD) : ALIGN(4) {
+    	__loaderinfo_start = .;
+    	KEEP(*(.loaderinfo))
+    	__loaderinfo_end = .;
+    } > FLASH_LOADER_INFO
 }
