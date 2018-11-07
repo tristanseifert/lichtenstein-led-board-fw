@@ -47,6 +47,7 @@ static void init_hardware(void) {
 	status_init();
 	mux_init();
 	diffrx_init();
+	ws2812_init();
 	spi_init();
 	can_init();
 	adc_init();
