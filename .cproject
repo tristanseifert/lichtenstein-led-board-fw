@@ -807,6 +807,18 @@
                         					
                     </folderInfo>
                     					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.273657250" name="ws2812_generator_waveform.S" rcbsApplicability="disable" resourcePath="src/hw/ws2812_generator_waveform.S" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.883317064.1367727306">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.883317064.1367727306" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.883317064">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other.993048146" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other" value="-nostdlib -march=ARMv6-M" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.240917689" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
+                    					
                     <sourceEntries>
                         						
                         <entry excluding="FreeRTOS/Source/portable/GCC/TriCore_1782|FreeRTOS/Source/portable/GCC/STR75x|FreeRTOS/Source/portable/GCC/RX600v2|FreeRTOS/Source/portable/GCC/RX600|FreeRTOS/Source/portable/GCC/RX100|FreeRTOS/Source/portable/GCC/RL78|FreeRTOS/Source/portable/GCC/PPC440_Xilinx|FreeRTOS/Source/portable/GCC/PPC405_Xilinx|FreeRTOS/Source/portable/GCC/NiosII|FreeRTOS/Source/portable/GCC/MSP430F449|FreeRTOS/Source/portable/GCC/MicroBlazeV9|FreeRTOS/Source/portable/GCC/MicroBlazeV8|FreeRTOS/Source/portable/GCC/MicroBlaze|FreeRTOS/Source/portable/GCC/MCF5235|FreeRTOS/Source/portable/GCC/IA32_flat|FreeRTOS/Source/portable/GCC/HCS12|FreeRTOS/Source/portable/GCC/H8S2329|FreeRTOS/Source/portable/GCC/CORTUS_APS3|FreeRTOS/Source/portable/GCC/ColdFire_V2|FreeRTOS/Source/portable/GCC/AVR32_UC3|FreeRTOS/Source/portable/GCC/ATMega323|FreeRTOS/Source/portable/GCC/ARM7_LPC23xx|FreeRTOS/Source/portable/GCC/ARM7_LPC2000|FreeRTOS/Source/portable/GCC/ARM7_AT91SAM7S|FreeRTOS/Source/portable/GCC/ARM7_AT91FR40008|FreeRTOS/Source/portable/GCC/ARM_CRx_No_GIC|FreeRTOS/Source/portable/GCC/ARM_CR5|FreeRTOS/Source/portable/GCC/ARM_CM7|FreeRTOS/Source/portable/GCC/ARM_CM4F|FreeRTOS/Source/portable/GCC/ARM_CM4_MPU|FreeRTOS/Source/portable/GCC/ARM_CM3_MPU|FreeRTOS/Source/portable/GCC/ARM_CM3|FreeRTOS/Source/portable/GCC/ARM_CA9|FreeRTOS/Source/portable/GCC/ARM_CA53_64_BIT|FreeRTOS/Source/portable/WizC|FreeRTOS/Source/portable/ThirdParty|FreeRTOS/Source/portable/Tasking|FreeRTOS/Source/portable/Softune|FreeRTOS/Source/portable/SDCC|FreeRTOS/Source/portable/RVDS|FreeRTOS/Source/portable/Rowley|FreeRTOS/Source/portable/Renesas|FreeRTOS/Source/portable/Paradigm|FreeRTOS/Source/portable/oWatcom|FreeRTOS/Source/portable/MSVC-MingW|FreeRTOS/Source/portable/MPLAB|FreeRTOS/Source/portable/MikroC|FreeRTOS/Source/portable/MemMang|FreeRTOS/Source/portable/Keil|FreeRTOS/Source/portable/IAR|FreeRTOS/Source/portable/Common|FreeRTOS/Source/portable/CodeWarrior|FreeRTOS/Source/portable/CCS|FreeRTOS/Source/portable/BCC|_write.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
@@ -1610,6 +1622,18 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.707485724.1652110733" name="ws2812_generator_waveform.S" rcbsApplicability="disable" resourcePath="src/hw/ws2812_generator_waveform.S" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1559471335.495453357">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1559471335.495453357" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1559471335">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other.1425734436" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other" value="-nostdlib -march=ARMv6-M" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.78686648" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <sourceEntries>
                         						
@@ -2426,6 +2450,18 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.471137544.515416231.540101381" name="ws2812_generator_waveform.S" rcbsApplicability="disable" resourcePath="src/hw/ws2812_generator_waveform.S" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1880594191.74761979">
+                        						
+                        <tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1880594191.74761979" name="GNU ARM Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1880594191">
+                            							
+                            <option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other.468787016" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.other" useByScannerDiscovery="false" value="-nostdlib -march=ARMv6-M" valueType="string"/>
+                            							
+                            <inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input.1853372860" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.input"/>
+                            						
+                        </tool>
+                        					
+                    </fileInfo>
                     					
                     <sourceEntries>
                         						
