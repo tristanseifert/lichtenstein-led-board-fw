@@ -129,7 +129,7 @@ int can_init(void) {
 
 	// unmask interrupts
 	NVIC_EnableIRQ(CEC_CAN_IRQn);
-	NVIC_SetPriority(CEC_CAN_IRQn, 2);
+	NVIC_SetPriority(CEC_CAN_IRQn, 6);
 
 	// configure CAN bit timing for 125kbps nominal
 	CAN->BTR = 0x001c0017;

@@ -7,6 +7,7 @@
 #include "hw/status.h"
 #include "hw/output_mux.h"
 #include "hw/differential_rx.h"
+#include "hw/ws2812_generator.h"
 #include "periph/spi.h"
 #include "periph/canbus.h"
 #include "periph/adc.h"
@@ -18,12 +19,12 @@
 
 #include "lichtenstein_app/version.h"
 #include "lichtenstein_app/cannabus_init.h"
+#include "lichtenstein_app/led_post.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
 #include "gitcommit.h"
-#include "hw/ws2812_generator.h"
 
 /**
  * Performs initialization of all hardware.
@@ -59,7 +60,7 @@ static void init_hardware(void) {
 /**
  * Application entry point
  */
-int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
+__attribute__((noreturn)) int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unused__))) {
 #ifdef DEBUG
 		// initialize trace
 		trace_initialize();
@@ -81,19 +82,12 @@ int main(int argc __attribute__((__unused__)), char* argv[]__attribute__((__unus
 	// initialize CANnabus
 	lichtenstein_cannabus_init();
 
-	// reset the outputs, then enable differential driver
-	ws2812_send_pixel(300, kWS2812PixelTypeRGBW, 0x00000000);
-
-	diffrx_set_state(kDiffRxEnabled);
-
-	mux_set_state(kMux0, kMuxStateDifferentialReceiver);
-	mux_set_state(kMux1, kMuxStateDifferentialReceiver);
+	// perform LED POST
+	lichtenstein_led_post();
 
 	// start FreeRTOS scheduler. this should not return
 	vTaskStartScheduler();
-
-	// never should get here
-	return 0;
+	NVIC_SystemReset();
 }
 
 

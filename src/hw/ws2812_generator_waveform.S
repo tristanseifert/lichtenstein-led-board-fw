@@ -61,7 +61,7 @@ ws2812_out_generic_outer:
 
 	// load inner loop counter (number of bits)
 	mov		r3, r2
-	mov		r3, #31
+//	mov		r3, #31
 
 	// inner loop start
 ws2812_out_generic_inner:

@@ -59,6 +59,11 @@ extern uint32_t SystemCoreClock;
 
 #define configMAX_TASK_NAME_LEN			10
 
+// TODO: we should define configKERNEL_INTERRUPT_PRIORITY and configMAX_SYSCALL_INTERRUPT_PRIORITY
+// interrupt priorities
+#define configKERNEL_INTERRUPT_PRIORITY			0
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY		8
+
 // idle task
 #define configIDLE_SHOULD_YIELD			1
 #define configUSE_IDLE_HOOK				1
@@ -114,6 +119,10 @@ extern uint32_t SystemCoreClock;
 #define INCLUDE_vTaskDelayUntil			0
 #define INCLUDE_vTaskDelay				0
 
+// enable stuff to be able to get CPU usage in debug mode
+#ifdef DEBUG
+#define INCLUDE_xTaskGetIdleTaskHandle	1
+#endif
 
 // assert for FreeRTOS
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); __asm volatile("bkpt 0"); for( ;; ); }

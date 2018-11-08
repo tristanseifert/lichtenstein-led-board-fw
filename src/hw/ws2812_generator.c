@@ -45,17 +45,27 @@ void ws2812_init(void) {
  * big interrupt latencies (~20ms, worst case with 300 LEDs).
  */
 void ws2812_send_pixel(unsigned int count, ws2812_pixel_type type, uint32_t pixel) {
+	uint32_t temp;
+
 	// do output pls
 	switch(type) {
 	case kWS2812PixelTypeRGBW:
+		// LED format is GGRRBBWW
+		temp = ((pixel & 0x00FF0000) << 8) |  ((pixel & 0xFF000000) >> 8) |
+			   ((pixel & 0x0000FF00)) | ((pixel & 0x000000FF));
+
 		vPortEnterCritical();
-		ws2812_out_generic(count, pixel, 32);
+		ws2812_out_generic(count, temp, 32);
 		vPortExitCritical();
 		break;
 
 	case kWS2812PixelTypeRGB:
+		// LED format is GGRRBB
+		temp = ((pixel & 0x00FF0000) << 8) |  ((pixel & 0xFF000000) >> 8) |
+			   ((pixel & 0x0000FF00));
+
 		vPortEnterCritical();
-		ws2812_out_generic(count, (pixel >> 8), 24);
+		ws2812_out_generic(count, temp, 24);
 		vPortExitCritical();
 		break;
 	}
