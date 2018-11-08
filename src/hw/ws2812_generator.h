@@ -36,6 +36,6 @@ void ws2812_init(void);
  * This works for both SK6812RGBW and WS2811-type pixels since they speak the
  * same protocol, so long as the correct type is specified.
  */
-void ws2812_send_pixel(int count, ws2812_pixel_type type, uint32_t pixel);
+void ws2812_send_pixel(unsigned int count, ws2812_pixel_type type, uint32_t pixel);
 
 #endif /* WS2811_GENERATOR_H_ */

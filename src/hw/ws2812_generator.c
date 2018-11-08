@@ -7,14 +7,17 @@
  *  Created on: Nov 1, 2018
  *      Author: tristan
  */
+#include "ws2812_generator.h"
+
 #include "lichtenstein.h"
+
+#include "FreeRTOS.h"
 
 #include <stdint.h>
 #include <string.h>
-#include "ws2812_generator.h"
 
 // TODO: implement 3 byte send
-void ws2812_send_4bytes(int numLeds, uint32_t data);
+void ws2812_send_4bytes(unsigned int numLeds, uint32_t data);
 
 /**
  * Initializes the test generator.
@@ -38,17 +41,17 @@ void ws2812_init(void) {
  * same protocol, so long as the correct type is specified.
  *
  * Pixel data is in the format of 0xRRGGBBWW.
+ *
+ * @note Interrupts are disabled while data is output. This can lead to pretty
+ * big interrupt latencies (~20ms, worst case with 300 LEDs).
  */
-void ws2812_send_pixel(int count, ws2812_pixel_type type, uint32_t pixel) {
-	// build data array
-	uint8_t data[4];
-	int dataLen = 3;
-
-	memset(&data, 0, sizeof(data));
-
+void ws2812_send_pixel(unsigned int count, ws2812_pixel_type type, uint32_t pixel) {
+	// do output pls
 	switch(type) {
 	case kWS2812PixelTypeRGBW:
+		vPortEnterCritical();
 		ws2812_send_4bytes(count, pixel);
+		vPortExitCritical();
 		break;
 
 	case kWS2812PixelTypeRGB:
@@ -71,7 +74,7 @@ void ws2812_send_pixel(int count, ws2812_pixel_type type, uint32_t pixel) {
  * Performs the send of the data. This function is in RAM so it executes with no
  * wait states.
  */
-__attribute__((__section__(".data"))) void ws2812_send_4bytes(int numLeds, uint32_t _data) {
+__attribute__((__section__(".data"))) void ws2812_send_4bytes(unsigned int numLeds, uint32_t _data) {
 	// prepare registers and bit fields
 	volatile uint32_t *gpioReg;
 	uint32_t setBitmask, clearBitmask;
@@ -89,7 +92,7 @@ __attribute__((__section__(".data"))) void ws2812_send_4bytes(int numLeds, uint3
 #endif
 
 	// repeat for the number of LEDs we have
-	for(int i = 0; i < numLeds; i++) {
+	for(unsigned int i = 0; i < numLeds; i++) {
 		// send 32 bits of data
 		uint32_t bit = (uint32_t) (1 << 31);
 		uint32_t data = _data;
@@ -150,6 +153,12 @@ __attribute__((__section__(".data"))) void ws2812_send_4bytes(int numLeds, uint3
 			// are there any more bits to output?
 			"sub		%[numBits], #1\n"
 			"bne		loop%=\n"
+
+			// we need to lengthen the loop a little so the first bit of the
+			// next LED is output properly
+			".rept 3\n"
+			"dmb\n"
+			".endr\n"
 				: [numBits] "+r" (counter),
 				  [bit] "+r" (bit)
 				: [gpio] "r" (gpioReg),

@@ -11,6 +11,7 @@
 
 #include "../hw/output_mux.h"
 #include "../hw/differential_rx.h"
+#include "../hw/ws2812_generator.h"
 
 #include "../periph/adc.h"
 
@@ -40,6 +41,10 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
 		else if(op->reg == 0x012) {
 			return lichtenstein_cannabus_diffrxctrl(op);
 		}
+		// test generator control register (reg = 0x013)
+		else if(op->reg == 0x013) {
+			return lichtenstein_cannabus_testgen(op);
+		}
 	}
 
 	// if we fall down here, whatever operation was not handled
@@ -51,6 +56,16 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
 
 /**
  * Gets ADC data, converts it, and sends it. (Reg 0x010)
+ *
+ * Allowed accesses: RTR
+ *
+ * The register is divided as follows:
+ * - Bytes 1-2:	Voltage
+ * - Bytes 2-3: Current
+ * - Bytes 4-5: Temperature (Celsius)
+ * - Bytes 6-7: Raw ADC reference voltage
+ *
+ * All converted values are presented in 8.8 fixed point form.
  */
 int lichtenstein_cannabus_adc(void) {
 	int err;
@@ -105,6 +120,15 @@ int lichtenstein_cannabus_adc(void) {
 
 /**
  * Handles a write to the MUX control register. (Reg 0x011)
+ *
+ * Allowed accesses: Write
+ *
+ * The register is divided as follows:
+ * - Byte 1:		Output 0 mux state
+ * - Byte 2:		Output 1 mux state
+ *
+ * Mux state is 0x00 selects the received differential signal, and 0x01 selects
+ * the test generator as output.
  */
 int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op) {
 	// we must get two bytes of data
@@ -135,6 +159,11 @@ int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op) {
 
 /**
  * Handles a write to the differential receiver control register. (Reg 0x012)
+ *
+ * Allowed accesses: Write
+ *
+ * The register is divided as follows:
+ * - Byte 1:		Differential driver state (0 = disabled, 1 = enabled)
  */
 int lichtenstein_cannabus_diffrxctrl(cannabus_operation_t *op) {
 	// we must get a single byte of data
@@ -148,6 +177,49 @@ int lichtenstein_cannabus_diffrxctrl(cannabus_operation_t *op) {
 	} else {
 		diffrx_set_state(kDiffRxDisabled);
 	}
+
+	// success
+	return kErrSuccess;
+}
+
+
+/**
+ * Handles a write to the test generator control register. (Reg 0x013)
+ *
+ * Allowed accesses: Write
+ *
+ * Writing to this register immediately starts the test generator.
+ *
+ * The register is divided as follows:
+ * - Bytes 1-2:	Number of LEDs for which to output data
+ * - Bytes 3-6:	RGB(W) data to output
+ * - Byte 7:		LED type (0 = WS2812b, 1 = SK6812)
+ * - Byte 8:		Reserved (should be 0)
+ */
+int lichtenstein_cannabus_testgen(cannabus_operation_t *op) {
+	unsigned int numLeds;
+	uint32_t rgbwValue;
+	ws2812_pixel_type type = kWS2812PixelTypeRGB;
+
+	// we must get a 8 bytes of data
+	if(op->data_len != 8) {
+		return kErrCannabusInvalidFrameSize;
+	}
+
+	// extract the number of LEDs
+	numLeds = (uint32_t) ((op->data[0] << 8) | (op->data[1]));
+
+	// extract the RGBW data
+	rgbwValue = (uint32_t) ((op->data[2] << 24) | (op->data[3] << 16) |
+				(op->data[4] << 8) | (op->data[5]));
+
+	// get the type
+	if(op->data[6] == 0x01) {
+		type = kWS2812PixelTypeRGBW;
+	}
+
+	// run the test generator
+	ws2812_send_pixel(numLeds, type, rgbwValue);
 
 	// success
 	return kErrSuccess;
