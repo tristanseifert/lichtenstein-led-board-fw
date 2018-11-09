@@ -153,6 +153,27 @@ int cannabus_send_op(cannabus_operation_t *op) {
 
 
 /**
+ * Acknowledges a received operation.
+ *
+ * An acknowledgment is a frame with no data, with the same address as the
+ * last write, but with the second highest bit set in the identifier.
+ */
+int cannabus_ack_received(cannabus_operation_t *_op) {
+	cannabus_operation_t op;
+	memset(&op, 0, sizeof(op));
+
+	// copy all relevant fields
+	op.reg = _op->reg;
+	op.priority = _op->priority;
+	op.ack = 1;
+
+	// send it
+	return cannabus_send_op(&op);
+}
+
+
+
+/**
  * Converts a received CAN frame into a CANnabus operation.
  */
 int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t *op) {
@@ -167,6 +188,8 @@ int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t 
 	}
 
 	// copy fields from the CAN frame
+	op->priority = (frame->identifier & 0x10000000) ? 1 : 0;
+	op->ack = (frame->identifier & 0x08000000) ? 1 : 0;
 	op->broadcast = (nodeId == 0xFFFF) ? 1 : 0;
 	op->data_len = frame->data_len;
 	op->reg = reg;
@@ -186,6 +209,16 @@ int cannabus_conv_frame_to_op(cannabus_can_frame_t *frame, cannabus_operation_t 
 int cannabus_conv_op_to_frame(cannabus_operation_t *op, cannabus_can_frame_t *frame) {
 	// build the identifier
 	uint32_t identifier = (uint32_t) ((op->reg & 0x7FF) | (gState.address << 11));
+
+	// is it an ack frame?
+	if(op->ack) {
+		identifier |= 0x08000000;
+	}
+
+	// is it a priority frame?
+	if(op->priority) {
+		identifier |= 0x10000000;
+	}
 
 	// copy parameters to frame
 	frame->identifier = identifier;
@@ -236,6 +269,11 @@ int cannabus_internal_op(cannabus_operation_t *op) {
 int cannabus_internal_reg_deviceid(cannabus_operation_t *_op) {
 	int err = kErrCannabusUnimplemented;
 
+	// ignore ack frames, we do not do any writes
+	if(_op->ack) {
+		return kErrSuccess;
+	}
+
 	// is this a broadcast frame?
 	if(_op->broadcast) {
 		// if so, respond with our device id register
@@ -258,7 +296,14 @@ int cannabus_internal_reg_deviceid(cannabus_operation_t *_op) {
 			deviceId = (uint16_t) ((_op->data[0] << 8) | (_op->data[1]));
 
 			err = cannabus_set_address(deviceId);
+			if(err < kErrSuccess) {
+				return err;
+			}
+
 			LOG("updated device id: %x", deviceId);
+
+			// acknowledge if address was changed successfully
+			err = cannabus_ack_received(_op);
 		}
 	}
 

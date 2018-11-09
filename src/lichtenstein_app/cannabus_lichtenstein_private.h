@@ -23,7 +23,7 @@
  *
  * All converted values are presented in 8.8 fixed point form.
  */
-int lichtenstein_cannabus_adc(void);
+int lichtenstein_cannabus_adc(cannabus_operation_t *op);
 
 /**
  * Handles a write to the MUX control register. (Reg 0x011)

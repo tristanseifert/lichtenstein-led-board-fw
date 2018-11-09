@@ -57,6 +57,10 @@ typedef struct {
 	uint16_t reg		: 11;
 	/// was this message a remote transmission request?
 	uint16_t rtr		: 1;
+	/// was this frame an acknowledgement?
+	uint16_t ack		: 1;
+	/// is this frame marked as 'high priority?'
+	uint16_t	 priority	: 1;
 
 	/// how many bytes of data do we have?
 	uint8_t data_len;
@@ -116,6 +120,14 @@ int cannabus_process(void);
  * Sends the given operation on the bus.
  */
 int cannabus_send_op(cannabus_operation_t *op);
+
+/**
+ * Acknowledges a received operation.
+ *
+ * An acknowledgment is a frame with no data, with the same address as the
+ * last write, but with the second highest bit set in the identifier.
+ */
+int cannabus_ack_received(cannabus_operation_t *op);
 
 
 #endif /* CANNABUS_CANNABUS_H_ */

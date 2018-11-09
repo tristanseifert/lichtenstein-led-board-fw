@@ -28,7 +28,7 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
 	if(op->rtr) {
 		// read ADC state (reg = 0x010)
 		if(op->reg == 0x010) {
-			return lichtenstein_cannabus_adc();
+			return lichtenstein_cannabus_adc(op);
 		}
 	}
 	// handle register writes (RTR = 0)
@@ -67,7 +67,7 @@ int lichtenstein_cannabus_cb(cannabus_operation_t *op) {
  *
  * All converted values are presented in 8.8 fixed point form.
  */
-int lichtenstein_cannabus_adc(void) {
+int lichtenstein_cannabus_adc(cannabus_operation_t *_op) {
 	int err;
 	uint32_t temp;
 
@@ -108,9 +108,15 @@ int lichtenstein_cannabus_adc(void) {
 	cannabus_operation_t op;
 	memset(&op, 0, sizeof(op));
 
-	op.reg = 0x010;
-	op.data_len = 8;
+	// copy register number from source
+	op.reg = _op->reg;
 
+	// mark it as an acknowledgment
+	op.ack = 1;
+	op.priority = _op->priority;
+
+	// copy data
+	op.data_len = 8;
 	memcpy(&op.data, &convertedData, 8);
 
 	// send frame
@@ -152,8 +158,8 @@ int lichtenstein_cannabus_muxctrl(cannabus_operation_t *op) {
 		mux_set_state(kMux1, kMuxStateDifferentialReceiver);
 	}
 
-	// success
-	return kErrSuccess;
+	// success, acknowledge the write
+	return cannabus_ack_received(op);
 }
 
 
@@ -178,8 +184,8 @@ int lichtenstein_cannabus_diffrxctrl(cannabus_operation_t *op) {
 		diffrx_set_state(kDiffRxDisabled);
 	}
 
-	// success
-	return kErrSuccess;
+	// success, acknowledge the write
+	return cannabus_ack_received(op);
 }
 
 
@@ -221,6 +227,6 @@ int lichtenstein_cannabus_testgen(cannabus_operation_t *op) {
 	// run the test generator
 	ws2812_send_pixel(numLeds, type, rgbwValue);
 
-	// success
-	return kErrSuccess;
+	// return with an acknowledgment
+	return cannabus_ack_received(op);
 }
