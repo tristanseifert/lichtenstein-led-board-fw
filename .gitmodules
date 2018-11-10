@@ -1,0 +1,3 @@
+[submodule "libs/lichtenstein-led-board-loader"]
+	path = libs/lichtenstein-led-board-loader
+	url = git@github.com:tristanseifert/lichtenstein-led-board-loader.git

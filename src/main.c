@@ -21,10 +21,17 @@
 #include "lichtenstein_app/cannabus_init.h"
 #include "lichtenstein_app/led_post.h"
 
+#include "loader_helpers.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 
 #include "gitcommit.h"
+
+/**
+ * Callbacks to use for the bootloader
+ */
+static const bootloader_flash_callbacks_t gLoaderCallbacks;
 
 /**
  * Performs initialization of all hardware.
@@ -84,6 +91,9 @@ __attribute__((noreturn)) int main(int argc __attribute__((__unused__)), char* a
 
 	// perform LED POST
 	lichtenstein_led_post();
+
+	// now that the system is ready, set 30min driver to mark this fw as good
+	loader_init(&gLoaderCallbacks);
 
 	// start FreeRTOS scheduler. this should not return
 	vTaskStartScheduler();
