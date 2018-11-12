@@ -23,11 +23,6 @@ bool nvram_is_valid(void);
 int nvram_reset_data(void);
 
 /**
- * Calculates the CRC16 over the given block of data.
- */
-uint16_t nvram_crc16(void *data, size_t len);
-
-/**
  * Returns the CRC16 of the shadow copy.
  */
 uint16_t nvram_shadow_crc16(void);

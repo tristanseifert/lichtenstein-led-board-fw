@@ -22,7 +22,7 @@ static cannabus_state_t gState;
 /**
  * Initializes the CANnabus and sets this node's address.
  */
-int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t *callbacks) {
+int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, uint8_t fwUpgradeCapabilities, const cannabus_callbacks_t *callbacks) {
 	int err;
 
 	// first, clear all state and copy callbacks
@@ -54,6 +54,7 @@ int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t
 	}
 
 	gState.deviceType = deviceType;
+	gState.fwUpgradeCapabilities = fwUpgradeCapabilities;
 
 	// start the CAN bus
 	err = gState.callbacks.can_init();
@@ -332,7 +333,14 @@ int cannabus_internal_reg_deviceid_respond(cannabus_operation_t *_op __attribute
 	op.data[2] = kCannabusVersion;
 	op.data[3] = gState.deviceType;
 
-	// TODO: handle firmware update capabilities field
+	// fw upgrade support, passed to the initializer
+	op.data[4] = gState.fwUpgradeCapabilities;
+
+	// firmware version
+	uint16_t version = gState.callbacks.get_fw_version();
+
+	op.data[5] = (uint8_t) ((version & 0xFF00) >> 8);
+	op.data[6] = (uint8_t) (version & 0x00FF);
 
 	// transmit the frame
 	err = cannabus_send_op(&op);

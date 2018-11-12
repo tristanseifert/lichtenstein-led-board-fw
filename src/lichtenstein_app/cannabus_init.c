@@ -14,12 +14,21 @@
 #include "lichtenstein.h"
 
 #include "../hw/nvram.h"
+#include "../hw/spi_flash.h"
 #include "../periph/canbus.h"
 #include "../cannabus/cannabus.h"
+#include "../util/crc.h"
+
+#include "version.h"
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+
+/// internal state for the Lichtenstein CANnabus driver
+static lichtenstein_cannabus_state_t gState;
+
+
 
 /**
  * Callbacks for CANnabus IO
@@ -31,6 +40,13 @@ const cannabus_callbacks_t kCannabusCallbacks = {
 	.can_rx_message = lichtenstein_cannabus_can_rx_message,
 	.can_tx_message = lichtenstein_cannabus_can_tx_message,
 
+	.get_fw_version = lichtenstein_cannabus_get_fw_version,
+
+	.upgrade_begin = lichtenstein_cannabus_upgrade_begin,
+	.upgrade_write = lichtenstein_cannabus_upgrade_write,
+	.upgrade_end = lichtenstein_cannabus_upgrade_end,
+	.upgrade_reset = lichtenstein_cannabus_upgrade_reset,
+
 	.handle_operation = lichtenstein_cannabus_cb,
 };
 
@@ -40,6 +56,10 @@ const cannabus_callbacks_t kCannabusCallbacks = {
  * CANnabus callback: initializes CAN bus.
  */
 int lichtenstein_cannabus_can_init(void) {
+	// clear the internal state
+	memset(&gState, 0, sizeof(gState));
+
+	// start CAN peripheral
 	can_start();
 	return 0;
 }
@@ -124,9 +144,85 @@ void lichtenstein_cannabus_init(void) {
 #endif
 
 	// initialize bus
-	err = cannabus_init(busId, 0x0B, &kCannabusCallbacks);
+	err = cannabus_init(busId, 0x0B, (0b10000000 | 15), &kCannabusCallbacks);
 
 	if(err < kErrSuccess) {
 		LOG("cannabus init failed: %d\n", err);
 	}
+}
+
+
+
+/**
+ * CANnabus callback: begins a firmware upgrade session. This finds a blank page
+ * in the loader flash/the oldest firmware, erases it, and prepares the internal
+ * state.
+ */
+int lichtenstein_cannabus_upgrade_begin(uint16_t crc) {
+	int err;
+
+	// copy CRC and reset CRC accumulator
+	gState.expectedCRC = crc;
+	gState.currentCRC = 0xFFFF;
+
+	// TODO: find a free firmware upgrade bank in flash
+	gState.flashAddr = 0x8000;
+
+	// erase 32K of memory (one firmware image)
+	err = spiflash_erase(0x7FFF, gState.flashAddr);
+
+	return err;
+}
+
+/**
+ * CANnabus callback: writes data to the firmware flash. Data is provided in
+ * chunks of 8 bytes, so they will never cross the boundary of a 256 byte page.
+ */
+int lichtenstein_cannabus_upgrade_write(size_t numBytes, void *data) {
+	int err;
+
+	// update the CRC
+	gState.currentCRC = crc16(data, numBytes, gState.currentCRC);
+
+	// write to the flash
+	err = spiflash_write(numBytes, data, gState.flashAddr);
+
+	// increment flash address
+	gState.flashAddr += numBytes;
+
+	return err;
+}
+
+/**
+ * CANnabus callback: finishes a firmware upgrade session. The CRC of existing
+ * data is validated, and if it is correct, the loader info block is updated to
+ * boot this firmware.
+ */
+int lichtenstein_cannabus_upgrade_end(void) {
+	// abort if CRC doesn't match
+	if(gState.expectedCRC != gState.currentCRC) {
+		return kErrCannabusCRCInvalid;
+	}
+
+	// TODO: mark firmware as good in loader
+	return kErrUnimplemented;
+}
+
+/**
+ * CANnabus callback: resets the device after a firmware upgrade.
+ */
+int lichtenstein_cannabus_upgrade_reset(void) {
+	NVIC_SystemReset();
+
+	// unreachable
+	return kErrSuccess;
+}
+
+
+
+/**
+ * CANnabus callback: returns the device firmware version.
+ */
+uint16_t lichtenstein_cannabus_get_fw_version(void) {
+	return kLichtensteinVersion.version;
 }

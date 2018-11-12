@@ -29,6 +29,8 @@ typedef struct {
 
 	/// device type
 	uint8_t deviceType;
+	/// firmware upgrade capabilities
+	uint8_t fwUpgradeCapabilities;
 
 	/// number of received frames
 	unsigned int rxFrames;

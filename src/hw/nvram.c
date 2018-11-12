@@ -9,6 +9,8 @@
 
 #include "spi_flash.h"
 
+#include "../util/crc.h"
+
 #include "lichtenstein.h"
 
 #include <string.h>
@@ -109,7 +111,7 @@ int nvram_reset_data(void) {
 	gNVRAM.swVersion = 0x0001;
 
 	// generate cannabus address from device unique id (starts at 0x1FFFF7AC)
-	uint16_t cannabusId = nvram_crc16((void *) 0x1FFFF7AC, 12);
+	uint16_t cannabusId = crc16((void *) 0x1FFFF7AC, 12, 0xFFFF);
 	gNVRAM.cannabusId = cannabusId;
 
 	// assign checksum
@@ -123,45 +125,8 @@ int nvram_reset_data(void) {
 
 
 /**
- * Calculates the CRC16 over the given block of data.
- *
- * from http://people.cs.umu.se/isak/snippets/crc-16.c
- */
-uint16_t nvram_crc16(void *_data, size_t len) {
-	// CCITT CRC16 polynomial (0x1021, but we use the reverse)
-	const uint16_t poly = 0x8408;
-
-    unsigned int data, i;
-    unsigned int crc = 0xffff;
-
-    // handle zero length data
-    if (len == 0) {
-    	return (uint16_t) ~crc;
-    }
-
-    // get data and start the loop
-    uint8_t *data_p = (uint8_t *) _data;
-
-	do {
-		for (i = 0, data = (unsigned int) 0xff & *data_p++; i < 8; i++, data >>= 1) {
-			if ((crc & 0x0001) ^ (data & 0x0001)) {
-				crc = (crc >> 1) ^ poly;
-			} else  {
-				crc >>= 1;
-			}
-		}
-	} while(--len);
-
-    crc = ~crc;
-    data = crc;
-    crc = (crc << 8) | (data >> 8 & 0xff);
-
-    return (uint16_t) crc;
-}
-
-/**
  * Returns the CRC16 of the shadow copy.
  */
 uint16_t nvram_shadow_crc16(void) {
-	return nvram_crc16(&gNVRAM, sizeof(nvram_t) - sizeof(uint16_t));
+	return crc16(&gNVRAM, sizeof(nvram_t) - sizeof(uint16_t), 0xFFFF);
 }

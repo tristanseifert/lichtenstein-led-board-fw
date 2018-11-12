@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /**
  * CANnabus error codes
@@ -20,6 +21,7 @@ enum {
 	kErrCannabusUnimplemented		= -42000,
 	kErrCannabusNodeIdMismatch		= -42001,
 	kErrCannabusInvalidFrameSize	= -42002,
+	kErrCannabusCRCInvalid			= -42003,
 };
 
 /**
@@ -89,6 +91,18 @@ typedef struct {
 	/// transmits a frame on the CAN bus.
 	int (*can_tx_message)(cannabus_can_frame_t *);
 
+	/// returns the firmware version.
+	uint16_t (*get_fw_version)(void);
+
+	/// begins a firmware update session, with the given CRC.
+	int (*upgrade_begin)(uint16_t);
+	/// writes n bytes of firmware data
+	int (*upgrade_write)(size_t, void *);
+	/// finishes a firmware update session. if the CRC is invalid this errors
+	int (*upgrade_end)(void);
+	/// resets the device after a firmware has been written.
+	int (*upgrade_reset)(void);
+
 	/// handles an incoming CANnabus message, if not a system message
 	int (*handle_operation)(cannabus_operation_t *);
 } cannabus_callbacks_t;
@@ -98,7 +112,7 @@ typedef struct {
 /**
  * Initializes the CANnabus and sets this node's address.
  */
-int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, cannabus_callbacks_t *callbacks);
+int cannabus_init(cannabus_addr_t addr, uint8_t deviceType, uint8_t fwUpgradeCapabilities, const cannabus_callbacks_t *callbacks);
 
 /**
  * Changes the node's address.
