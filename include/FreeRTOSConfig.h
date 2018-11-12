@@ -135,5 +135,8 @@ extern uint32_t SystemCoreClock;
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 
+// set the status handler for context switches
+#define traceTASK_SWITCHED_IN()		status_handle_context_switch()
+
 #endif /* FREERTOS_CONFIG_H */
 

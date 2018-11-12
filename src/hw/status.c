@@ -16,6 +16,9 @@
 
 #include "lichtenstein.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -122,4 +125,20 @@ void status_restore(void) {
 	// set both LEDs to off
 	status_set(kStatusLED0, gLEDState[0]);
 	status_set(kStatusLED1, gLEDState[1]);
+}
+
+
+
+/**
+ * Context switching callback from FreeRTOS: when the idle task is switched in,
+ * STATUS[0] turns off, but when another task is switched in, it is turned on.
+ * This makes that status LED basically an indicator of CPU load.
+ */
+void status_handle_context_switch(void) {
+	// was the idle task switched in?
+	if(xTaskGetCurrentTaskHandle() == xTaskGetIdleTaskHandle()) {
+		status_set(kStatusLED0, false);
+	} else {
+		status_set(kStatusLED0, true);
+	}
 }
