@@ -8,11 +8,11 @@
  */
 
 #ifndef LICHTENSTEIN_APP_CANNABUS_INIT_H_
-#define LICHTENSTEIN_APP_CANNABUS_INIT_H_
+#define CONTROLLER_CANNABUS_INIT_H_
 
 /**
  * Initializes CANnabus communication.
  */
-void lichtenstein_cannabus_init(void);
+void controller_cannabus_init(void);
 
 #endif /* LICHTENSTEIN_APP_CANNABUS_INIT_H_ */

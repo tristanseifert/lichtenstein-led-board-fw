@@ -90,7 +90,7 @@ typedef struct {
  *
  * This task primarily handles receiving frames.
  */
-void can_task(void);
+void can_task(void *);
 
 /**
  * Transmits a message.

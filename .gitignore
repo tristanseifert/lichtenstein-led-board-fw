@@ -1,3 +1,6 @@
+# Finder garbage
+.DS_Store
+
 # Build folders
 /Debug
 /Debug-STM32F072

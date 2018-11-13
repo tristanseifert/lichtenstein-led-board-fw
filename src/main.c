@@ -87,7 +87,7 @@ __attribute__((noreturn)) int main(int argc __attribute__((__unused__)), char* a
 	init_hardware();
 
 	// initialize CANnabus
-	lichtenstein_cannabus_init();
+	controller_cannabus_init();
 
 	// perform LED POST
 	lichtenstein_led_post();

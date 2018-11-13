@@ -34,13 +34,13 @@ static lichtenstein_cannabus_state_t gState;
  * Callbacks for CANnabus IO
  */
 const cannabus_callbacks_t kCannabusCallbacks = {
-	.can_init = lichtenstein_cannabus_can_init,
-	.can_config_filter = lichtenstein_cannabus_can_config_filter,
-	.can_rx_waiting = lichtenstein_cannabus_can_rx_waiting,
-	.can_rx_message = lichtenstein_cannabus_can_rx_message,
+	.can_init = controller_cannabus_can_init,
+	.can_config_filter = controller_cannabus_can_config_filter,
+	.can_rx_waiting = controller_cannabus_can_rx_waiting,
+	.can_rx_message = controller_cannabus_can_rx_message,
 	.can_tx_message = lichtenstein_cannabus_can_tx_message,
 
-	.get_fw_version = lichtenstein_cannabus_get_fw_version,
+	.get_fw_version = controller_cannabus_get_fw_version,
 
 	.upgrade_begin = lichtenstein_cannabus_upgrade_begin,
 	.upgrade_write = lichtenstein_cannabus_upgrade_write,
@@ -55,7 +55,7 @@ const cannabus_callbacks_t kCannabusCallbacks = {
 /**
  * CANnabus callback: initializes CAN bus.
  */
-int lichtenstein_cannabus_can_init(void) {
+int controller_cannabus_can_init(void) {
 	// clear the internal state
 	memset(&gState, 0, sizeof(gState));
 
@@ -66,19 +66,19 @@ int lichtenstein_cannabus_can_init(void) {
 /**
  * CANnabus callback: configures a mask-based filter.
  */
-int lichtenstein_cannabus_can_config_filter(unsigned int filter, uint32_t mask, uint32_t identifier) {
+int controller_cannabus_can_config_filter(unsigned int filter, uint32_t mask, uint32_t identifier) {
 	return can_filter_mask(filter, mask, identifier);
 }
 /**
  * CANnabus callback: are there any messages waiting?
  */
-bool lichtenstein_cannabus_can_rx_waiting(void) {
+bool controller_cannabus_can_rx_waiting(void) {
 	return can_messages_available();
 }
 /**
  * CANnabus callback: receives a message from CAN peripheral.
  */
-int lichtenstein_cannabus_can_rx_message(cannabus_can_frame_t *frame) {
+int controller_cannabus_can_rx_message(cannabus_can_frame_t *frame) {
 	int err;
 
 	// receive message from CAN peripheral
@@ -131,7 +131,7 @@ int lichtenstein_cannabus_can_tx_message(cannabus_can_frame_t *frame) {
 /**
  * Initializes CANnabus communication.
  */
-void lichtenstein_cannabus_init(void) {
+void controller_cannabus_init(void) {
 	int err;
 
 	// get the node id from nvram
@@ -223,6 +223,6 @@ int lichtenstein_cannabus_upgrade_reset(void) {
 /**
  * CANnabus callback: returns the device firmware version.
  */
-uint16_t lichtenstein_cannabus_get_fw_version(void) {
+uint16_t controller_cannabus_get_fw_version(void) {
 	return kLichtensteinVersion.version;
 }

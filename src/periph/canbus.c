@@ -37,7 +37,7 @@ int can_init(void) {
 
 	// create rx queue
 	gState.rxQueue = xQueueCreateStatic(kCANRxBufferSize, sizeof(can_message_t),
-			&gState.rxQueueBuffer, &gState.rxQueueStruct);
+			(void *) &gState.rxQueueBuffer, &gState.rxQueueStruct);
 
 	if(gState.rxQueue == NULL) {
 		return kErrQueueCreationFailed;
@@ -45,7 +45,7 @@ int can_init(void) {
 
 	// create task message queue
 	gState.taskMsgQueue = xQueueCreateStatic(kCANMsgBufferSize,
-			sizeof(can_task_msg_t), &gState.taskMsgBuffer,
+			sizeof(can_task_msg_t), (void *) &gState.taskMsgBuffer,
 			&gState.taskMsgQueueStruct);
 
 	if(gState.taskMsgQueue == NULL) {
@@ -54,7 +54,7 @@ int can_init(void) {
 
 	// create the task
 	gState.task = xTaskCreateStatic(can_task, "CAN",
-			kCANStackSize, NULL, 2, &gState.taskStack, &gState.taskTCB);
+			kCANStackSize, NULL, 2, (void *) &gState.taskStack, &gState.taskTCB);
 
 	if(gState.task == NULL) {
 		return kErrTaskCreationFailed;
@@ -229,7 +229,7 @@ int can_filter_mask(unsigned int _bank, uint32_t mask, uint32_t identifier) {
  *
  * - Bit 0: CAN error
  */
-void can_task(void) {
+__attribute__((noreturn)) void can_task( __attribute__((unused)) void *ctx) {
 	BaseType_t ok;
 	can_task_msg_t msg;
 
