@@ -72,8 +72,8 @@ int can_init(void) {
 	GPIOA->OSPEEDR |= (GPIO_OSPEEDER_OSPEEDR11 | GPIO_OSPEEDER_OSPEEDR12);
 
 	// configure PA11 and PA12 alternate functions
-	GPIOB->AFR[1] |= 0x04 << (3 * 4);
-	GPIOB->AFR[1] |= 0x04 << (4 * 4);
+	GPIOA->AFR[1] |= 0x04 << (3 * 4);
+	GPIOA->AFR[1] |= 0x04 << (4 * 4);
 #endif
 #ifdef STM32F072
 	// enable GPIO clocks
